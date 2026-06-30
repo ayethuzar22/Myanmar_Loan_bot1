@@ -1,0 +1,502 @@
+[
+    //  ════════════════════════════════════════════════════════════════
+    //    INTENT: LOAN_INQUIRY  (25 samples — Myanmar + English mix)
+    //   ════════════════════════════════════════════════════════════════
+    //
+    //   ── Agriculture Loan ────────────────────────────────────────────
+  {
+    "text": "စိုက်ပျိုးရေးချေးငွေ လျှောက်ဖို့ ဘာတွေ လိုအပ်ပါသလဲ ခင်ဗျာ?",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Agriculture loan eligibility / required documents"
+  },
+  {
+    "text": "လယ်ယာသုံးချေးငွေ အများဆုံး ဘယ်လောက်အထိ ချေးလို့ ရပါသလဲ ရှင့်?",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Max amount for agriculture loan"
+  },
+  {
+    "text": "ကျွန်တော် သုံးဧကရှိတဲ့ လယ်သမားဆိုရင် ချေးငွေ ရမှာပါလားခင်ဗျာ?",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Eligibility check for farmer with land"
+  },
+  {
+    "text": "What documents are required to apply for an agriculture loan?",
+    "intent": "LOAN_INQUIRY",
+    "language": "en",
+    "notes": "Docs for agriculture loan"
+  },
+  {
+    "text": "Can I use my farmland as collateral for an agriculture loan?",
+    "intent": "LOAN_INQUIRY",
+    "language": "en",
+    "notes": "Collateral type inquiry"
+  },
+
+  // ── Small Business Loan ─────────────────────────────────────────
+  {
+    "text": "အသေးစားစီးပွားရေး ချေးငွေရဖို့ ဘာသတ်မှတ်ချက်တွေ ရှိပါသလဲ ရှင့်?",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "MSME loan criteria"
+  },
+  {
+    "text": "ကုန်ဆိုင်တစ်ဆိုင် ဖွင့်ဖို့ ချေးငွေ လျှောက်လို့ ရနိုင်ပါသလားခင်ဗျာ?",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "MSME loan for shop opening"
+  },
+  {
+    "text": "MSME ချေးငွေ သက်တမ်း အများဆုံး ဘယ်နှစ်လ ဆပ်ရပါသလဲ ခင်ဗျာ?",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "MSME loan max tenure"
+  },
+  {
+    "text": "What is the maximum loan amount for a small business loan?",
+    "intent": "LOAN_INQUIRY",
+    "language": "en",
+    "notes": "MSME max amount"
+  },
+  {
+    "text": "Do I need a business license to apply for a small business loan?",
+    "intent": "LOAN_INQUIRY",
+    "language": "en",
+    "notes": "MSME documentation"
+  },
+
+  // ── Consumption Loan ────────────────────────────────────────────
+  {
+    "text": "လူသုံးကုန်ချေးငွေ နဲ့ MSME ချေးငွေ ကွာခြားချက် ဘာလဲ ရှင့်?",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Comparison between loan types"
+  },
+  {
+    "text": "ကျွန်မ ကလေးတက္ကသိုလ် ဖိုနဲ့ ဆိုရင် Consumption Loan ယူလို့ ရပါသလားခင်ဗျာ?",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Education purpose consumption loan"
+  },
+  {
+    "text": "Consumption Loan ဆိုတာ ဘာအတွက် သုံးနိုင်ပါသလဲ ခင်ဗျာ?",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Purpose of consumption loan"
+  },
+  {
+    "text": "What is the purpose of a consumption loan and how do I qualify?",
+    "intent": "LOAN_INQUIRY",
+    "language": "en",
+    "notes": "Consumption loan purpose + eligibility"
+  },
+  {
+    "text": "Can a salaried employee apply for a consumption loan?",
+    "intent": "LOAN_INQUIRY",
+    "language": "en",
+    "notes": "Employment requirement for consumption loan"
+  },
+
+  // ── Interest Rate / Repayment ────────────────────────────────────
+  {
+    "text": "ချေးငွေ အတိုးနှုန်း ဘယ်လောက် ဖြစ်ပါသလဲ ရှင့်?",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Interest rate inquiry"
+  },
+  {
+    "text": "Declining Balance ဆိုတာ ဘာကိုဆိုလိုတာပါလဲ ခင်ဗျာ?",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Clarification on interest method"
+  },
+  {
+    "text": "ချေးငွေ အစောဆုံး ဘယ်နှစ်လ ဆပ်ရမှာ ပါသလဲ ခင်ဗျာ?",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Min repayment period"
+  },
+  {
+    "text": "What is the annual interest rate for your loans?",
+    "intent": "LOAN_INQUIRY",
+    "language": "en",
+    "notes": "Interest rate"
+  },
+  {
+    "text": "How does the declining balance method work for loan repayment?",
+    "intent": "LOAN_INQUIRY",
+    "language": "en",
+    "notes": "Declining balance explanation"
+  },
+
+  // ── General / Mixed ─────────────────────────────────────────────
+  {
+    "text": "ချေးငွေ အမျိုးအစားတွေ ဘာတွေ ရှိပါသလဲ ရှင့်?",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "General loan types inquiry"
+  },
+  {
+    "text": "နိုင်ငံခြားသားတွေ ချေးငွေ လျှောက်လို့ ရပါသလားခင်ဗျာ?",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Foreigner eligibility (answer: no)"
+  },
+  {
+    "text": "ချေးငွေ ဘယ်လို လျှောက်ထားရမှာ ပါလဲ ခင်ဗျာ? Online လုပ်လို့ ရပါသလား?",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Application process / online"
+  },
+  {
+    "text": "How long does it take to approve a loan application?",
+    "intent": "LOAN_INQUIRY",
+    "language": "en",
+    "notes": "Approval timeline"
+  },
+  {
+    "text": "Are foreigners allowed to apply for a loan?",
+    "intent": "LOAN_INQUIRY",
+    "language": "en",
+    "notes": "Foreigner restriction (answer: no)"
+  },
+  {
+    "text": "Can I apply for more than one type of loan at the same time?",
+    "intent": "LOAN_INQUIRY",
+    "language": "en",
+    "notes": "Multiple loan eligibility"
+  },
+
+  // ════════════════════════════════════════════════════════════════
+  //  INTENT: CALCULATE  (10 samples)
+  // ════════════════════════════════════════════════════════════════
+  {
+    "text": "ချေးငွေ တွက်ပေးပါ ခင်ဗျာ",
+    "intent": "CALCULATE",
+    "language": "my",
+    "notes": "Direct Myanmar calc trigger"
+  },
+  {
+    "text": "အတိုး ဘယ်လောက် ထွက်မလဲ ဆိုတာ တွက်ချက်ပြပေးပါ ရှင့်",
+    "intent": "CALCULATE",
+    "language": "my",
+    "notes": "Interest amount calculation"
+  },
+  {
+    "text": "ငွေ ၅ သိန်း ၁၂ လ ဆပ်မယ်ဆို လစဉ် ဘယ်လောက် ပေးရမလဲ ရှင့်?",
+    "intent": "CALCULATE",
+    "language": "my",
+    "notes": "Monthly payment calc with principal+tenure"
+  },
+  {
+    "text": "ချေးငွေ ၁၀ သိန်း ၂၄ လ ဆပ်မယ်ဆို စုစုပေါင်း ဘယ်လောက် ပြန်ဆပ်ရမလဲ ခင်ဗျာ?",
+    "intent": "CALCULATE",
+    "language": "my",
+    "notes": "Total repayment calc"
+  },
+  {
+    "text": "ဝန်ဆောင်ခ နဲ့ ဖူလုံရေးကြေး ဘယ်လောက် ကြ မလဲ တွက်ပြပါ ရှင့်",
+    "intent": "CALCULATE",
+    "language": "my",
+    "notes": "Fee breakdown calc"
+  },
+  {
+    "text": "Calculate my monthly loan payment for 500,000 MMK over 12 months.",
+    "intent": "CALCULATE",
+    "language": "en",
+    "notes": "English calc with amounts"
+  },
+  {
+    "text": "How much interest will I pay on a 1,000,000 MMK loan over 18 months?",
+    "intent": "CALCULATE",
+    "language": "en",
+    "notes": "Total interest calc"
+  },
+  {
+    "text": "Can you run the loan calculator for me?",
+    "intent": "CALCULATE",
+    "language": "en",
+    "notes": "Generic calc trigger"
+  },
+  {
+    "text": "What is my total repayment if I borrow 2,000,000 MMK for 24 months?",
+    "intent": "CALCULATE",
+    "language": "en",
+    "notes": "Total repayment inquiry"
+  },
+  {
+    "text": "ချေးငွေ အတိုးနှုန်းတွက် ကိရိယာ သုံးချင်ပါတယ် ရှင့်",
+    "intent": "CALCULATE",
+    "language": "my",
+    "notes": "Explicit calculator tool request"
+  },
+
+  // ════════════════════════════════════════════════════════════════
+  //  INTENT: COMPLAINT  (7 samples)
+  // ════════════════════════════════════════════════════════════════
+  {
+    "text": "ကျွန်တော့် ချေးငွေ လျှောက်တာ ကြာနေပြီ ဘာဖြစ်နေတာလဲ ခင်ဗျာ?",
+    "intent": "COMPLAINT",
+    "language": "my",
+    "notes": "Delay in approval complaint"
+  },
+  {
+    "text": "ဝန်ထမ်းတွေ ဆက်သွယ်မရ၊ ဖုန်းတွေ မရ ဘာဖြစ်နေတာလဲ ရှင့်?",
+    "intent": "COMPLAINT",
+    "language": "my",
+    "notes": "Staff unreachable complaint"
+  },
+  {
+    "text": "ကျွန်မ ဆပ်ပြီးသွားတာ ကို system မှာ မပေါ် သေးဘူး ဘာဖြစ်တာလဲ ခင်ဗျာ?",
+    "intent": "COMPLAINT",
+    "language": "my",
+    "notes": "Payment not reflected complaint"
+  },
+  {
+    "text": "My loan application has been pending for 3 weeks without any update.",
+    "intent": "COMPLAINT",
+    "language": "en",
+    "notes": "Delay complaint"
+  },
+  {
+    "text": "I was charged extra fees that were never mentioned in my loan agreement.",
+    "intent": "COMPLAINT",
+    "language": "en",
+    "notes": "Hidden fee complaint"
+  },
+  {
+    "text": "The customer service representative was very rude to me when I called.",
+    "intent": "COMPLAINT",
+    "language": "en",
+    "notes": "Staff attitude complaint"
+  },
+  {
+    "text": "ချေးငွေ ငွေပေးချေမှု လက်ခံဖို့ ဘဏ်ကိုင်း ပိတ်ထားတယ် ဆိုတဲ့ SMS ရတယ်၊ ဘာဖြစ်တာလဲ ခင်ဗျာ?",
+    "intent": "COMPLAINT",
+    "language": "my",
+    "notes": "Account suspension complaint"
+  },
+
+  // ════════════════════════════════════════════════════════════════
+  //  INTENT: THANK  (8 samples)
+  // ════════════════════════════════════════════════════════════════
+  {
+    "text": "ကျေးဇူးတင်ပါတယ်ခင်ဗျာ",
+    "intent": "THANK",
+    "language": "my",
+    "notes": "Simple polite thanks"
+  },
+  {
+    "text": "ကျေးဇူးပါပဲ ရှင့် ရှင်းလင်းစွာ ဖြေပေးလို့",
+    "intent": "THANK",
+    "language": "my",
+    "notes": "Thanks for clear explanation"
+  },
+  {
+    "text": "မေတ္တာရပ်ပါတယ် ကူညီပေးလို့ ကျေးဇူးတင်ပါတယ် ခင်ဗျာ",
+    "intent": "THANK",
+    "language": "my",
+    "notes": "Grateful for help"
+  },
+  {
+    "text": "အလွန်အကျွံ ကောင်းပါတယ်ခင်ဗျာ ဆက်မေးဦးမည်",
+    "intent": "THANK",
+    "language": "my",
+    "notes": "Positive feedback + will ask more"
+  },
+  {
+    "text": "Thank you so much for explaining everything clearly.",
+    "intent": "THANK",
+    "language": "en",
+    "notes": "Gratitude for explanation"
+  },
+  {
+    "text": "Thanks, that was very helpful!",
+    "intent": "THANK",
+    "language": "en",
+    "notes": "Casual thanks"
+  },
+  {
+    "text": "Great, thanks a lot for your assistance.",
+    "intent": "THANK",
+    "language": "en",
+    "notes": "Formal thanks"
+  },
+  {
+    "text": "ကျေးဇူးပဲ ရှင့် နားလည်သွားပါပြီ",
+    "intent": "THANK",
+    "language": "my",
+    "notes": "Thanks + comprehension confirmation"
+  },
+  {
+    "text": "ကျောင်းသား ငွေယူလို့ရလား",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Student loan inquiry using 'take money' terminology"
+  },
+  {
+    "text": "ကျောင်းသားတွေရော ပိုက်ဆံယူလို့ရမလား",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Student eligibility with alternative spacing"
+  },
+  {
+    "text": "ချေးငွေ လျှောက်ပြီး ငွေဘယ်လိုယူရမလဲ",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Process of taking disbursed loan"
+  },
+  {
+    "text": "စိုက်ပျိုးရေးအတွက် ငွေယူချင်လို့ ဘာတွေလိုမလဲ",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Agriculture loan with 'take money' keyword"
+  },
+  {
+    "text": "ငွေယူလို့ရနိုင်မလား ရှင့်",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Short general loan inquiry"
+  },
+  {
+    "text": "ပိုက်ဆံထုတ်လို့ရလား",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Colloquial phrasing for borrowing"
+  },
+
+  // ── စကားလုံး အရှေ့နောက်/အထားအသို ပြောင်းလဲမှုပုံစံများ (Variations) ──
+  {
+    "text": "ရနိုင်မလား ချေးငွေက",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Inverted sentence structure"
+  },
+  {
+    "text": "နိုင်ငံခြားသားဆိုရင် ချေးငွေက လုံးဝမရဘူးလား",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Foreigner query with emphasis"
+  },
+  {
+    "text": "လိုချင်လို့ ပိုက်ဆံချေး စိုက်ပျိုးရေးအတွက်",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Scrambled order of words"
+  },
+  {
+    "text": "MSME ဘာလဲ",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Very short keyword inquiry"
+  },
+  {
+    "text": "Loan types က ဘာတွေလဲ",
+    "intent": "LOAN_INQUIRY",
+    "language": "my",
+    "notes": "Bilingual mixed query"
+  },
+
+  // ================================================================
+  //   INTENT: CALCULATE (တွက်ချက်ခြင်းဆိုင်ရာ အသုံးအနှုန်းသစ်များ)
+  // ================================================================
+  {
+    "text": "၁၀ သိန်း တွက်ပေး",
+    "intent": "CALCULATE",
+    "language": "my",
+    "notes": "Short calculation request with numeric intent"
+  },
+  {
+    "text": "၅သိန်း ကို ၁၂လဆပ်ရင် အတိုးဘယ်လောက်လဲ",
+    "intent": "CALCULATE",
+    "language": "my",
+    "notes": "No spaces between digits and characters"
+  },
+  {
+    "text": "Calculate please",
+    "intent": "CALCULATE",
+    "language": "en",
+    "notes": "Short English trigger"
+  },
+  {
+    "text": "အတိုးနှုန်း ဘယ်လိုတွက်လဲ ပြပေးပါ",
+    "intent": "CALCULATE",
+    "language": "my",
+    "notes": "Formula or tool query"
+  },
+
+  // ================================================================
+  //   INTENT: COMPLAINT (ကန့်ကွက်ခြင်း/တိုင်ကြားခြင်းဆိုင်ရာ အသုံးအနှုန်းသစ်များ)
+  // ================================================================
+  {
+    "text": "စိတ်ပျက်စရာပဲ ငွေလည်းမကျသေးဘူး",
+    "intent": "COMPLAINT",
+    "language": "my",
+    "notes": "Frustrated delay complaint"
+  },
+  {
+    "text": "စနစ်ကြီးကလည်း အလုပ်မလုပ်ဘူး ဘာဖြစ်နေတာလဲ",
+    "intent": "COMPLAINT",
+    "language": "my",
+    "notes": "System failure complaint"
+  },
+  {
+    "text": "App က ဒေါင်းလို့မရဘူး",
+    "intent": "COMPLAINT",
+    "language": "my",
+    "notes": "Technical issue complaint"
+  },
+
+  // ================================================================
+  //   INTENT: THANK (ကျေးဇူးတင်ခြင်းဆိုင်ရာ အသုံးအနှုန်းသစ်များ)
+  // ================================================================
+  {
+    "text": "ဟုတ်ကဲ့ ကျေးဇူးပါ",
+    "intent": "THANK",
+    "language": "my",
+    "notes": "Conversational casual thanks"
+  },
+  {
+    "text": "အဆင်ပြေသွားပါပြီ ကျေးဇူး",
+    "intent": "THANK",
+    "language": "my",
+    "notes": "Short thanks after resolution"
+  },
+  {
+    "text": "Thz standard clear",
+    "intent": "THANK",
+    "language": "en",
+    "notes": "Short internet slang thanks"
+  },
+
+  { "text": "စိုက်ပျိုးရေးချေးငွေ လျှောက်ဖို့ ဘာတွေ လိုအပ်ပါသလဲ ခင်ဗျာ?", "intent": "LOAN_INQUIRY", "language": "my", "notes": "Formal" },
+  { "text": "ငွေယူလို့ရလား", "intent": "LOAN_INQUIRY", "language": "my", "notes": "Short, Synonym" },
+  { "text": "ငွေချေးလို့ရမလားရှင်", "intent": "LOAN_INQUIRY", "language": "my", "notes": "Short, Synonym" },
+  { "text": "ပိုက်ဆံလိုချင်လို့ ဘယ်လိုလုပ်ရမလဲ", "intent": "LOAN_INQUIRY", "language": "my", "notes": "Casual" },
+  { "text": "ရမလား ငွေက စိုက်ပျိုးရေးလုပ်ဖို့", "intent": "LOAN_INQUIRY", "language": "my", "notes": "Inverted" },
+  { "text": "မင်္ဂလာပါရှင် ကျွန်မကတော့ ရန်ကုန်ကပါ အခု အိမ်မှာ ကုန်စုံဆိုင်လေးတစ်ဆိုင် ဖွင့်ထားလို့ အရင်းအနှီးလေး တိုးချင်လို့ ချေးငွေအကြောင်းလေး သိချင်ပါတယ်ရှင်", "intent": "LOAN_INQUIRY", "language": "my", "notes": "Verbose/Long text" },
+  { "text": "လယ်သမားတွေကော ပိုက်ဆံထုတ်လို့ရလား ဘာစာရွက်လိုလဲ", "intent": "LOAN_INQUIRY", "language": "my", "notes": "Mixed Synonym" },
+  { "text": "What documents are required to apply for an agriculture loan?", "intent": "LOAN_INQUIRY", "language": "en", "notes": "English" },
+
+  // ─── CALCULATE (ကိန်းဂဏန်း နှင့် တွက်ချက်မှု ပုံစံများ) ───
+  { "text": "ချေးငွေ တွက်ပေးပါ ခင်ဗျာ", "intent": "CALCULATE", "language": "my", "notes": "Direct" },
+  { "text": "၅သိန်း ၁၂လဆပ်ရင် တလဘယ်လောက်ကျမလဲ", "intent": "CALCULATE", "language": "my", "notes": "Short, No spaces" },
+  { "text": "အတိုးတွက်ပြပါ", "intent": "CALCULATE", "language": "my", "notes": "Keyword" },
+  { "text": "ကျွန်တော်က ၁၀ သိန်း ချေးပြီးတော့ ၂ နှစ်လောက် ခွဲဆပ်ချင်တာ ဗျာ စုစုပေါင်း အတိုးရော အရင်းရော ဘယ်လောက် ပြန်ပေးရမလဲ တွက်ပေးလို့ ရမလား", "intent": "CALCULATE", "language": "my", "notes": "Verbose Calculation" },
+  { "text": "Calculate my monthly loan payment for 500,000 MMK over 12 months.", "intent": "CALCULATE", "language": "en", "notes": "English" },
+
+  // ─── COMPLAINT (ဒေါသထွက်ခြင်း နှင့် တိုင်ကြားမှု ပုံစံများ) ───
+  { "text": "ကျွန်တော့် ချေးငွေ လျှောက်တာ ကြာနေပြီ ဘာဖြစ်နေတာလဲ ခင်ဗျာ?", "intent": "COMPLAINT", "language": "my", "notes": "Formal Complaint" },
+  { "text": "ဖုန်းခေါ်လို့လည်းမရဘူး စောင့်ရတာလည်း ကြာပြီ စနစ်ကလည်း လျှောက်ပြီးတာ မပေါ်ဘူး စိတ်ပျက်ဖို့ကောင်းလိုက်တာ", "intent": "COMPLAINT", "language": "my", "notes": "Verbose Complaint" },
+  { "text": "ဝန်ထမ်းတွေ ဆက်သွယ်မရဘူး ဘာဖြစ်နေတာလဲ", "intent": "COMPLAINT", "language": "my", "notes": "Direct" },
+  { "text": "My loan application has been pending for 3 weeks without any update.", "intent": "COMPLAINT", "language": "en", "notes": "English" },
+
+  // ─── THANK (နှုတ်ဆက်ခြင်း နှင့် ကျေးဇူးတင်ခြင်း ပုံစံများ) ───
+  { "text": "ကျေးဇူးတင်ပါတယ်ခင်ဗျာ", "intent": "THANK", "language": "my", "notes": "Formal" },
+  { "text": "ကျေးဇူးပဲ ရှင့် နားလည်သွားပါပြီ", "intent": "THANK", "language": "my", "notes": "Casual" },
+  { "text": "အိုကေ ပါ အဆင်ပြေသွားပြီ", "intent": "THANK", "language": "my", "notes": "Short" },
+  { "text": "Thanks, that was very helpful!", "intent": "THANK", "language": "en", "notes": "English" }
+]
+
