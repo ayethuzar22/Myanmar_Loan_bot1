@@ -119,6 +119,46 @@ LOAN_TYPE_TRIGGERS: frozenset[str] = frozenset({
     "\u1001\u103b\u1031\u1038\u1004\u103a\u1040\u1018\u101a\u103a\u1014\u103e\u1005\u103a\u1019\u103b\u102d\u102f\u1038", "\u1001\u103b\u1031\u1038\u1004\u103a\u1021\u1019\u103b\u102d\u102f\u1021\u1005\u102c\u1038",
 })
 
+# Borrow-intent root keywords — any query containing ANY of these signals
+# that the user wants to borrow money.  Using root substrings (not full
+# phrases) means we catch all natural Myanmar variations automatically:
+#   ချေးချင်တယ်, ချေးချင်လို့, ငွေချေးချင်, ငွေချေးလိုတယ် etc.
+#
+# IMPORTANT: This set is checked with `contains_any()` which does substring
+# matching, so short root words must be chosen carefully to avoid false
+# positives (e.g. do not add bare "ငွေ" alone — too broad).
+BORROW_INTENT_KEYWORDS: frozenset[str] = frozenset({
+    # Myanmar root substrings
+    "ချေးချင်",     # want to borrow (most common form)
+    "ချေးလို",      # want/need to borrow
+    "ငွေချေး",      # borrow money
+    "ချေးငွေရ",     # get a loan
+    "ချေးငွေလို",   # need a loan
+    "ချေးငွေလျှောက်", # apply for a loan
+    "ချေးငွေအကြောင်း",  # about loans
+    "ချေးငွေ အကြောင်း", # about loans (with space)
+    "ချေးငွေ သိ",   # want to know about loans
+    "ချေးနိုင်",    # can borrow
+    "ချေးပေး",      # lend (asking)
+    "ငွေလို",       # need money
+    "ငွေလိုတယ်",    # need money
+    "ချေးရမလား",    # can I borrow?
+    "ချေးလို့ရ",    # is it possible to borrow?
+    "ချေးလို့ရပါ",  # can borrow
+    "ပိုက်ဆံချေး",  # borrow money (colloquial)
+    "ပိုက်ဆံလို",   # need money (colloquial)
+    "loan လျှောက်",  # apply loan (mixed)
+    "loan apply",    # mixed Myanmar-English (catches "loan apply လုပ်ချင်တယ်")
+    "loan ရ",        # get loan (mixed)
+    "loan ချေး",     # borrow loan (mixed)
+    "loan လုပ်",     # do loan (mixed)
+    # English root phrases
+    "can i borrow", "want to borrow", "need a loan", "want a loan",
+    "i need money", "need money", "borrow money", "get a loan",
+    "apply for a loan", "how to apply", "how do i apply",
+    "loan application", "want to apply",
+})
+
 TRANSLATE_TRIGGERS: frozenset[str] = frozenset({
     "translate with myanmar", "translate to myanmar",
     "\u1019\u103c\u1014\u103a\u1019\u102c\u101c\u102d\u102f\u1018\u102c\u101e\u102c\u1015\u103c\u1014\u103a", "\u1019\u103c\u1014\u103a\u1019\u102c\u101c\u102d\u102f\u1015\u103c\u1014\u103a\u1015\u1031\u1038",
@@ -484,7 +524,7 @@ class KnowledgeStore:
         if not os.path.exists(self.json_path):
             raise FileNotFoundError(f"loan.json not found at: {self.json_path}")
 
-        with open(self.json_path, "r", encoding="utf-8") as fh:
+        with open(self.json_path, "r", encoding="utf-8-sig") as fh:
             try:
                 raw: list[Any] = json.load(fh)
             except json.JSONDecodeError as exc:
@@ -1084,8 +1124,6 @@ class AutonomousLearningFilter:
     failure never propagates to the caller.
     """
 
-
-
     def __init__(
         self,
         store:  KnowledgeStore,
@@ -1232,6 +1270,18 @@ class RAGPipeline:
         "\u1043\u104f \u101c\u1030\u101e\u102f\u1038\u1000\u102f\u1014\u103a\u1014\u103e\u1004\u103a\u1037 \u1021\u1011\u103d\u1031\u1011\u103d\u1031\u101e\u102f\u1038\u1005\u103d\u1032\u1019\u103e\u102f\u1001\u103b\u1031\u1038\u1004\u103a\u1040 (Consumption Loan)\n"
         "\u1018\u101a\u103a\u1001\u103b\u1031\u1038\u1004\u103a\u1040\u1021\u1000\u103c\u1031\u1038\u1004\u103a \u1015\u102d\u101a\u101e\u102d\u1001\u103b\u1004\u103a\u1015\u102b\u101e\u101c\u1032\u1038 \u1001\u1004\u103a\u1017\u103b\u102c?"
     )
+    _BORROW_INTENT = (
+        "ဟုတ်ကဲ့ ခင်ဗျာ၊ ကျွန်မတို့ Wondarmi Microfinance မှာ ချေးငွေ (၃) မျိုး ဝန်ဆောင်မှု ပေးနေပါတယ်ခင်ဗျာ —\n\n"
+        "၁။ 🌾 စိုက်ပျိုးရေးချေးငွေ (Agriculture Loan)\n"
+        "   လယ်ယာစိုက်ပျိုးရေး၊ မွေးမြူရေး နှင့် လယ်ယာသုံးစက်ကိရိယာ ဝယ်ယူလိုသူများအတွက်ခင်ဗျာ\n\n"
+        "၂။ 🏪 အသေးစားစီးပွားရေးချေးငွေ (Small Business Loan)\n"
+        "   ဆိုင်ဖွင့်ရန်၊ ကုန်ပစ္စည်းအရင်းထည့်ရန် သို့မဟုတ် လုပ်ငန်းချဲ့ရန်အတွက်ခင်ဗျာ\n\n"
+        "၃။ 👤 လူသုံးကုန်ချေးငွေ (Consumption Loan)\n"
+        "   လစာ/ဝင်ငွေရှိသောဝန်ထမ်းများ၊ ဆေးကုသစရိတ်၊ အိမ်ပြင်စရိတ် သို့မဟုတ် အရေးပေါ်လိုအပ်ချက်များအတွက်ခင်ဗျာ\n\n"
+        "လူကြီးမင်းက ဘယ်ရည်ရွယ်ချက်အတွက် ချေးလိုပါသလဲ ခင်ဗျာ? "
+        "(ဥပမာ — စိုက်ပျိုးရေး၊ ဆိုင်ဖွင့်ရန်၊ ဆေးကု၊ အိမ်ပြင် စသဖြင့်) "
+        "ပြောပေးပါက သင့်အတွက် အကောင်းဆုံး ချေးငွေအမျိုးအစားကို ညွှန်ပြပေးနိုင်ပါမည်ခင်ဗျာ။"
+    )
     _NO_INFO_MY  = (
         "\u1000\u103b\u103d\u1014\u103a\u1010\u102c\u1037\u1037 Knowledge Base \u1011\u1032\u1019\u103e\u102c \u1012\u102e\u1019\u1031\u1038\u1001\u103a\u1014\u103e\u1032\u1037 \u1015\u1000\u101e\u1000\u103a "
         "\u1021\u1001\u103b\u1000\u103a\u1021\u101c\u1000\u103a \u101b\u103e\u102c\u1019\u1010\u103d\u1031\u1037\u1015\u102b \u1001\u1004\u103a\u1017\u103b\u102c\u104d "
@@ -1264,6 +1314,7 @@ class RAGPipeline:
             self._handle_safety,
             self._handle_greeting,
             self._handle_thanks,
+            self._handle_borrow_intent,   # checked before loan_types
             self._handle_loan_types,
             self._handle_calculator,
         ]
@@ -1307,10 +1358,16 @@ class RAGPipeline:
         ai_answer = self._gemini.generate(prompt)
 
         if not ai_answer:
+            # Gemini unavailable or returned nothing — synthesise a direct
+            # answer from the top retrieved KB document instead of saying
+            # "no information found".  This ensures the bot always answers
+            # when FAISS found a relevant match above the threshold.
             log.warning(
-                "RAGPipeline: Gemini unavailable — using local KB answer ..."
+                "RAGPipeline: Gemini unavailable — using local KB answer "
+                "(score=%.3f, topic=%s).", best.score, best.document.topic,
             )
             return self._local_kb_answer(query, results)
+
         self._filter.validate_and_save(query, ai_answer)
 
         return RAGResponse(
@@ -1357,6 +1414,81 @@ class RAGPipeline:
         if contains_any(q, CALC_TRIGGERS):
             return RAGResponse(answer="LAUNCH_CALCULATOR", source="calculator_trigger")
         return None
+
+    def _handle_borrow_intent(self, q: str) -> Optional[RAGResponse]:
+        """
+        Catch any query where the user expresses intent to borrow money.
+
+        Uses root-keyword matching instead of full-phrase matching so that
+        all natural variations are caught:
+          ငွေချေးချင်တယ်, ချေးချင်လို့, ငွေချေးရမလား, ငွေလိုနေတယ်,
+          can I borrow, I need a loan, want to apply … etc.
+
+        Returns the loan-types overview with a call-to-action, so the user
+        always gets a useful answer instead of "no information found".
+        """
+        if contains_any(q, BORROW_INTENT_KEYWORDS):
+            return RAGResponse(
+                answer=self._BORROW_INTENT,
+                source="borrow_intent_handler",
+            )
+        return None
+
+    def _local_kb_answer(
+        self,
+        query: str,
+        results: list[RetrievalResult],
+    ) -> RAGResponse:
+        """
+        Synthesise a meaningful answer directly from the top retrieved
+        KB documents when Gemini is unavailable.
+
+        Strategy:
+        - Use the best-scoring document's answer as the primary response.
+        - If multiple documents have the same topic, append a brief note
+          that additional details are available.
+        - Always politely invite the user to ask more specific questions.
+
+        This guarantees the bot never says "no information found" when
+        FAISS already found relevant content above the similarity threshold.
+        """
+        best_doc  = results[0].document
+        lang      = detect_language(query)
+
+        # Primary answer — use the stored answer from the KB directly
+        answer = best_doc.answer.strip()
+
+        # Optional: if there are more related results with different answers,
+        # briefly mention the related topics
+        seen_topics: set[str] = {best_doc.topic}
+        extras: list[str] = []
+        for r in results[1:]:
+            if r.document.topic not in seen_topics and r.score >= 0.50:
+                seen_topics.add(r.document.topic)
+                extras.append(r.document.topic)
+
+        if extras:
+            if lang == "my":
+                topics_str = "၊ ".join(extras[:2])
+                answer += (
+                    f"\n\n\u1011\u1015\u103a\u1019\u1036\u101e\u102d\u101c\u102d\u101e\u100a\u103a\u1019\u103b\u102c\u1038\u1021\u1000\u103c\u1031\u1038 "
+                    f"{topics_str} \u1021\u1000\u103c\u1031\u1038\u1004\u103a\u1019\u103b\u102c\u1038\u101b\u103e\u102d\u1015\u102b\u101e\u1016\u103c\u1004\u103a\u1037 "
+                    f"\u1019\u1031\u1038\u1019\u103c\u1014\u103a\u1038\u1014\u102d\u102f\u1004\u103a\u1015\u102b \u1001\u1004\u103a\u1017\u103b\u102c\u104d"
+                )
+            else:
+                topics_str = ", ".join(extras[:2])
+                answer += (
+                    f"\n\nFor more details you may also ask about: {topics_str}."
+                )
+
+        return RAGResponse(
+            answer=answer,
+            source="local_kb_fallback",
+            matched_topic=best_doc.topic,
+            matched_category=best_doc.category,
+            similarity_score=results[0].score,
+            confidence=results[0].score,
+        )
 
     # ── Exact match ───────────────────────────────────────────────────────────
 
@@ -1494,6 +1626,21 @@ def build_index(json_path: str = RAW_JSON_PATH) -> None:
 
 def _run_repl(json_path: str) -> None:
     """Blocking interactive REPL.  Not used in production Django."""
+    # ── Gemini API key check ──────────────────────────────────────────────────
+    if not os.environ.get("GEMINI_API_KEY", "").strip():
+        print("\n" + "!" * 62)
+        print("  WARNING: GEMINI_API_KEY is not set.")
+        print("  The bot will answer from the knowledge base directly,")
+        print("  but full LLM-powered responses require a Gemini API key.")
+        print()
+        print("  To enable Gemini, run ONE of:")
+        print("    Windows PowerShell:")
+        print('    $env:GEMINI_API_KEY = "AIzaSy..."')
+        print("    Windows CMD:")
+        print('    set GEMINI_API_KEY=AIzaSy...')
+        print("    Or add it permanently via System Properties > Environment Variables")
+        print("!" * 62 + "\n")
+
     pipeline = _get_pipeline(json_path)
     history: list[ChatTurn] = []
     is_calculating = False
