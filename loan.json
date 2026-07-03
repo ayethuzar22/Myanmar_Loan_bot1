@@ -4920,5 +4920,18 @@
             "Bad Credit Inquiry",
             "Loan Amount Limits"
         ]
+    },
+    {
+    "id": 133,
+    "category": "Agriculture Loan",
+    "topic": "Agriculture Loan Amount Limit",
+    "language": "my",
+    "question": "စိုက်ပျိုးရေးချေးငွေ ဘယ်လောက်အထိ ချေးငွေရနိုင်ပါသနည်း?",
+    "answer": "စိုက်ပျိုးရေးချေးငွေအတွက် တစ်ဦးချင်း (Individual) လျှောက်ထားသူများအား အများဆုံး သိန်း ၂၀၀ (200 Lakhs MMK) အထိ ချေးငွေထုတ်ချေးပေးနိုင်ပါတယ်ခင်ဗျာ။ ချေးငွေပမာဏမှာ လုပ်ငန်းအတိုင်းအတာနှင့် ပြန်လည်ပေးဆပ်နိုင်စွမ်းအပေါ် မူတည်ပါသည်။",
+    "aliases": ["agriculture loan max amount", "200 lakhs agriculture", "individual agriculture loan limit"],
+    "keywords": ["agriculture", "maximum", "200 lakhs", "individual", "loan amount"],
+    "related_topics": ["Loan Amount Limits", "Agriculture Loan Details"]
     }
+
+
 ]

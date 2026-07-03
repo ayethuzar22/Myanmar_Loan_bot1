@@ -46,6 +46,10 @@ from google import genai
 from google.genai import types
 from sentence_transformers import SentenceTransformer
 
+import re
+import unicodedata
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # LOGGING
 # Named logger: Django's LOGGING dict can reconfigure it without conflict.
@@ -105,9 +109,53 @@ GREETINGS: frozenset[str] = frozenset({
 })
 
 THANK_WORDS: frozenset[str] = frozenset({
-    "thanks", "thank you", "thx", "thz", "thanks a lot", "thank you so much",
-    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1010\u1004\u103a\u1015\u102b\u1078\u101a\u103a", "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1015\u1032", "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1015\u102b\u1015\u1032",
-    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1015\u102b", "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1017\u103b\u102c",
+    "thanks",
+    "thank you",
+    "thank you so much",
+    "thanks a lot",
+    "many thanks",
+    "thanks so much",
+    "thanks!",
+    "thx",
+    "thnx",
+    "tnx",
+    "ty",
+    "tysm",
+    "appreciate it",
+
+    # Myanmar
+    "ကျေးဇူး",
+    "ကျေးဇူးပါ",
+    "ကျေးဇူးတင်",
+    "ကျေးဇူးတင်ပါတယ်",
+    "ကျေးဇူးအများကြီး",
+    "ကျေးဇူးအထူးတင်ပါတယ်",
+    "ကျေးဇူးအများကြီးတင်ပါတယ်",
+    "အများကြီးကျေးဇူးတင်ပါတယ်",
+    "ဖြေပေးတဲ့အတွက်ကျေးဇူး",
+    "ဖြေပေးလို့ကျေးဇူး",
+    "ဖြေပေးတာကျေးဇူး",
+    "ရှင်းပြပေးတဲ့အတွက်ကျေးဇူး",
+    "ကူညီပေးတဲ့အတွက်ကျေးဇူး",
+    "ကူညီပေးလို့ကျေးဇူး",
+    "တင်ပါတယ်",
+    "ကျေးဇူးနော်",
+    "ကျေးဇူးခင်ဗျ",
+    "ကျေးဇူးခင်ဗျာ",
+    "ကျေးဇူးပါခင်ဗျ",
+    "ကျေးဇူးပါခင်ဗျာ",
+    "ကျေးဇူးတင်ပါတယ်ခင်ဗျ",
+    "ကျေးဇူးတင်ပါတယ်ခင်ဗျာ",
+    "ကျေးဇူးပါနော်",
+    "ကျေးဇူးပါဗျ",
+    "ကျေးဇူးပါရှင်",
+    "ကျေးဇူးတင်ပါတယ်ရှင်",
+    "အိုကေကျေးဇူး",
+    "ok ကျေးဇူး",
+    "ok thanks",
+    "okay thanks",
+    "thank u",
+    "thank u so much",
 })
 
 CALC_TRIGGERS: frozenset[str] = frozenset({
@@ -1236,7 +1284,16 @@ class AutonomousLearningFilter:
 # ─────────────────────────────────────────────────────────────────────────────
 # RAG PIPELINE
 # ─────────────────────────────────────────────────────────────────────────────
+def normalize_query(text: str) -> str:
+    if not text:
+        return ""
 
+    text = unicodedata.normalize("NFKC", text)
+    text = text.lower()
+    text = re.sub(r"[^\w\s\u1000-\u109F]", "", text)
+    text = re.sub(r"\s+", "", text)
+
+    return text.strip()
 class RAGPipeline:
     """
     Orchestrates the full retrieve-then-generate pipeline.
@@ -1283,13 +1340,29 @@ class RAGPipeline:
         "ပြောပေးပါက သင့်အတွက် အကောင်းဆုံး ချေးငွေအမျိုးအစားကို ညွှန်ပြပေးနိုင်ပါမည်ခင်ဗျာ။"
     )
     _NO_INFO_MY  = (
-        "\u1000\u103b\u103d\u1014\u103a\u1010\u102c\u1037\u1037 Knowledge Base \u1011\u1032\u1019\u103e\u102c \u1012\u102e\u1019\u1031\u1038\u1001\u103a\u1014\u103e\u1032\u1037 \u1015\u1000\u101e\u1000\u103a "
-        "\u1021\u1001\u103b\u1000\u103a\u1021\u101c\u1000\u103a \u101b\u103e\u102c\u1019\u1010\u103d\u1031\u1037\u1015\u102b \u1001\u1004\u103a\u1017\u103b\u102c\u104d "
-        "\u1001\u103b\u1031\u1038\u1004\u103a\u1040\u1019\u103b\u102c\u1038\u1014\u103e\u1004\u103a\u1037 \u101e\u1000\u103a\u1006\u102d\u102f\u1004\u103a\u101e\u1031\u102c \u1019\u1031\u1038\u1019\u103c\u1014\u103a\u1038\u1015\u1031\u1038\u101e\u1031\u102c\u1019\u1031\u1038\u1019\u103c\u1014\u103a\u1038\u1015\u1031\u1038\u100a\u102c\u101c\u102c\u1038\u1010\u102c \u1019\u1031\u1038\u1019\u103c\u1014\u103a\u1038\u1015\u1031\u1038\u100a\u102c\u101c\u102c\u1038 \u1001\u1004\u103a\u1017\u103b\u102c\u104d"
+        "တောင်းပန်ပါတယ်ခင်ဗျာ။\n\n"
+        "ကျွန်ုပ်သည် Wonderami Microfinance ၏ "
+        "ချေးငွေဆိုင်ရာ AI Assistant ဖြစ်ပါသည်။\n\n"
+        "ချေးငွေနှင့်သက်ဆိုင်သော မေးခွန်းများကိုသာ "
+        "ဖြေကြားပေးနိုင်ပါသည်။\n\n"
+        "ဥပမာ -\n"
+        "• ချေးငွေအမျိုးအစားများ\n"
+        "• ချေးငွေလျှောက်ထားနည်း\n"
+        "• အတိုးနှုန်း\n"
+        "• လိုအပ်သောစာရွက်စာတမ်းများ\n"
+        "• ချေးငွေပြန်ဆပ်နည်း\n\n"
+        "သိလိုသည်များရှိပါက ဆက်လက်မေးမြန်းနိုင်ပါတယ်ခင်ဗျာ။"
     )
     _NO_INFO_EN  = (
-        "Sorry, I couldn't find relevant information in the Wonderami "
-        "knowledge base. Please ask questions related to our loan products."
+        "I'm here to assist with Wonderami Microfinance loan services only.\n\n"
+        "Please ask questions related to:\n"
+        "• Loan products\n"
+        "• Loan eligibility\n"
+        "• Loan application process\n"
+        "• Interest rates\n"
+        "• Required documents\n"
+        "• Loan repayment\n\n"
+        "Feel free to ask any loan-related questions."
     )
     _EMPTY_MY    = "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1015\u103c\u102f\u1024 \u1019\u1031\u1038\u1001\u103a\u1001\u103a\u1014\u103a\u1038\u1010\u1005\u103a\u1001\u102f\u1011\u100a\u1037\u101e\u103d\u1004\u103a\u1038\u1015\u1031\u1038\u100a\u102c\u101c\u102c\u1038 \u1001\u1004\u103a\u1017\u103b\u102c\u104d"
 
@@ -1314,70 +1387,103 @@ class RAGPipeline:
             self._handle_safety,
             self._handle_greeting,
             self._handle_thanks,
-            self._handle_borrow_intent,   # checked before loan_types
             self._handle_loan_types,
             self._handle_calculator,
         ]
 
+    def _classify_intent(self, q: str) -> str:
+        q = q.lower().strip()
+
+        if contains_any(q, GREETINGS):
+            return "greeting"
+
+        if contains_any(q, THANK_WORDS):
+            return "thanks"
+
+        if contains_any(q, BORROW_INTENT_KEYWORDS):
+            return "loan"
+
+        if contains_any(q, CALC_TRIGGERS):
+            return "calculator"
+
+        if any(e in q for e in ["😂", "🤣", "😄", "😆"]):
+            return "emoji"
+
+        if contains_any(q, LOAN_TYPE_TRIGGERS):
+            return "loan_info"
+
+        return "offtopic"
     # ── Main entry point ──────────────────────────────────────────────────────
 
     def run(
-        self,
-        query: str,
-        chat_history: Optional[list[ChatTurn]] = None,
+            self,
+            query: str,
+            chat_history: Optional[list[ChatTurn]] = None,
     ) -> RAGResponse:
-        """
-        Execute the full pipeline for query.  Always returns a populated
-        RAGResponse — never raises an exception to the caller.
-        """
         query = sanitize_input(query)
         if not query:
             return RAGResponse(answer=self._EMPTY_MY, source="empty_input")
 
-        q_lower = query.lower().strip()
+        q_norm = normalize_query(query)
+        intent = self._classify_intent(q_norm)
 
-        # Shortcut handlers — O(1) string ops, no embedding, no Gemini
-        for handler in self._shortcuts:
-            result = handler(q_lower)
+        if intent == "emoji":
+            return RAGResponse(
+                answer="ဟားဟား 😄\nချေးငွေနှင့်ပတ်သက်ပြီး သိလိုတာရှိရင် မေးမြန်းနိုင်ပါတယ်ခင်ဗျာ။",
+                source="emoji_handler"
+            )
+
+        # Safety / greeting / thanks / loan-types-structural / calculator —
+        # NOTE: borrow-intent handler removed from this list, it now runs
+        # only as a fallback below, after retrieval has had a chance.
+        for handler in (
+                self._handle_safety,
+                self._handle_greeting,
+                self._handle_thanks,
+                self._handle_loan_types,
+                self._handle_calculator,
+        ):
+            result = handler(query)
             if result is not None:
                 return result
 
-        # Exact string match — O(n), no embedding
+        # Exact string match
         exact = self._exact_match(query)
         if exact is not None:
             return exact
 
-        # FAISS semantic retrieval
+        # FAISS semantic retrieval — give specific KB content first priority
         results = self._retriever.retrieve(query)
-        if not results:
-            log.info("RAGPipeline: below threshold — returning no-info.")
-            return self._no_info(query)
+        if results:
+            best = results[0]
+            prompt = self._builder.build(query, results, chat_history)
+            ai_answer = self._gemini.generate(prompt)
 
-        best      = results[0]
-        prompt    = self._builder.build(query, results, chat_history)
-        ai_answer = self._gemini.generate(prompt)
+            if not ai_answer:
+                log.warning(
+                    "RAGPipeline: Gemini unavailable — using local KB answer "
+                    "(score=%.3f, topic=%s).", best.score, best.document.topic,
+                )
+                return self._local_kb_answer(query, results)
 
-        if not ai_answer:
-            # Gemini unavailable or returned nothing — synthesise a direct
-            # answer from the top retrieved KB document instead of saying
-            # "no information found".  This ensures the bot always answers
-            # when FAISS found a relevant match above the threshold.
-            log.warning(
-                "RAGPipeline: Gemini unavailable — using local KB answer "
-                "(score=%.3f, topic=%s).", best.score, best.document.topic,
+            self._filter.validate_and_save(query, ai_answer)
+            return RAGResponse(
+                answer=ai_answer,
+                source="gemini_rag",
+                matched_topic=best.document.topic,
+                matched_category=best.document.category,
+                similarity_score=best.score,
+                confidence=best.score,
             )
-            return self._local_kb_answer(query, results)
 
-        self._filter.validate_and_save(query, ai_answer)
+        # Nothing scored above threshold — NOW fall back to the generic
+        # "what's your purpose?" prompt if the message shows borrow intent,
+        # otherwise a plain no-info message.
+        if contains_any(q_norm, BORROW_INTENT_KEYWORDS):
+            return self._handle_borrow_intent(q_norm)
 
-        return RAGResponse(
-            answer=ai_answer,
-            source="gemini_rag",
-            matched_topic=best.document.topic,
-            matched_category=best.document.category,
-            similarity_score=best.score,
-            confidence=best.score,
-        )
+        log.info("RAGPipeline: below threshold — returning no-info.")
+        return self._no_info(query)
 
     def shutdown(self) -> None:
         """
@@ -1435,51 +1541,39 @@ class RAGPipeline:
         return None
 
     def _local_kb_answer(
-        self,
-        query: str,
-        results: list[RetrievalResult],
+            self,
+            query: str,
+            results: list[RetrievalResult],
     ) -> RAGResponse:
         """
-        Synthesise a meaningful answer directly from the top retrieved
-        KB documents when Gemini is unavailable.
-
-        Strategy:
-        - Use the best-scoring document's answer as the primary response.
-        - If multiple documents have the same topic, append a brief note
-          that additional details are available.
-        - Always politely invite the user to ask more specific questions.
-
-        This guarantees the bot never says "no information found" when
-        FAISS already found relevant content above the similarity threshold.
+        Use the best-scoring document as the primary answer. Only mention
+        (not paste in full) up to 2 additional strongly-related topics,
+        to avoid stitching together unrelated KB entries for vague queries.
         """
-        best_doc  = results[0].document
-        lang      = detect_language(query)
-
-        # Primary answer — use the stored answer from the KB directly
+        best_doc = results[0].document
+        lang = detect_language(query)
         answer = best_doc.answer.strip()
 
-        # Optional: if there are more related results with different answers,
-        # briefly mention the related topics
         seen_topics: set[str] = {best_doc.topic}
-        extras: list[str] = []
+        extra_topics: list[str] = []
         for r in results[1:]:
-            if r.document.topic not in seen_topics and r.score >= 0.50:
-                seen_topics.add(r.document.topic)
-                extras.append(r.document.topic)
+            if r.document.topic in seen_topics:
+                continue
+            if r.score < 0.55:  # raised bar — only strong secondary matches
+                continue
+            seen_topics.add(r.document.topic)
+            extra_topics.append(r.document.topic)
 
-        if extras:
+        if extra_topics:
             if lang == "my":
-                topics_str = "၊ ".join(extras[:2])
+                topics_str = "၊ ".join(extra_topics[:2])
                 answer += (
-                    f"\n\n\u1011\u1015\u103a\u1019\u1036\u101e\u102d\u101c\u102d\u101e\u100a\u103a\u1019\u103b\u102c\u1038\u1021\u1000\u103c\u1031\u1038 "
-                    f"{topics_str} \u1021\u1000\u103c\u1031\u1038\u1004\u103a\u1019\u103b\u102c\u1038\u101b\u103e\u102d\u1015\u102b\u101e\u1016\u103c\u1004\u103a\u1037 "
-                    f"\u1019\u1031\u1038\u1019\u103c\u1014\u103a\u1038\u1014\u102d\u102f\u1004\u103a\u1015\u102b \u1001\u1004\u103a\u1017\u103b\u102c\u104d"
+                    f"\n\nဆက်စပ်၍ သိလိုသည်များရှိပါက {topics_str} "
+                    f"အကြောင်းလည်း မေးမြန်းနိုင်ပါတယ်ခင်ဗျာ။"
                 )
             else:
-                topics_str = ", ".join(extras[:2])
-                answer += (
-                    f"\n\nFor more details you may also ask about: {topics_str}."
-                )
+                topics_str = ", ".join(extra_topics[:2])
+                answer += f"\n\nYou may also ask about: {topics_str}."
 
         return RAGResponse(
             answer=answer,
@@ -1518,6 +1612,7 @@ class RAGPipeline:
 
     def _no_info(self, query: str, score: float = 0.0) -> RAGResponse:
         lang = detect_language(query)
+
         return RAGResponse(
             answer=self._NO_INFO_MY if lang == "my" else self._NO_INFO_EN,
             source="threshold_gate",
@@ -1635,9 +1730,9 @@ def _run_repl(json_path: str) -> None:
         print()
         print("  To enable Gemini, run ONE of:")
         print("    Windows PowerShell:")
-        print('    $env:GEMINI_API_KEY = "AIzaSy..."')
+        print('    $env:GEMINI_API_KEY = "AQ.Ab8RN6KgjU6Oee52VprycQcn1Sa4VQOBEF1IsXuOPfLTgovK_w"')
         print("    Windows CMD:")
-        print('    set GEMINI_API_KEY=AIzaSy...')
+        print('    set GEMINI_API_KEY=AQ.Ab8RN6KgjU6Oee52VprycQcn1Sa4VQOBEF1IsXuOPfLTgovK_w')
         print("    Or add it permanently via System Properties > Environment Variables")
         print("!" * 62 + "\n")
 
