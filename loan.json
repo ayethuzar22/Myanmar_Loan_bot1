@@ -4931,6 +4931,16 @@
     "aliases": ["agriculture loan max amount", "200 lakhs agriculture", "individual agriculture loan limit"],
     "keywords": ["agriculture", "maximum", "200 lakhs", "individual", "loan amount"],
     "related_topics": ["Loan Amount Limits", "Agriculture Loan Details"]
+    },
+    {
+    "id": 133,
+    "category": "Bot Identity",
+    "topic": "How to Use This Assistant",
+    "language": "my",
+    "question": "ဒီ systemကို ဘယ်လိုသုံးရမလဲ",
+    "answer": "ကျွန်ုပ်သည် Wondarmi Microfinance ၏ ချေးငွေဆိုင်ရာ AI Assistant ဖြစ်ပါသည်။ ...",
+    "aliases": ["how to use this bot", "system အသုံးပြုနည်း"],
+    "keywords": ["how to use", "system", "help", "assistant"]
     }
 
 

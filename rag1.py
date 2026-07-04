@@ -1,26 +1,3 @@
-"""
-rag1.py — Production-Ready Bilingual RAG Engine for Wonderami Loan Chatbot
-==========================================================================
-Architecture:
-  LoanDocument             → Immutable validated KB entry with semantic_text property
-  RetrievalResult          → Typed retrieval hit (document + score + rank)
-  RAGResponse              → Structured response returned to every caller
-  ChatTurn                 → Single conversation turn for history injection
-  KnowledgeStore           → Thread-safe load / validate / cache of loan.json
-  EmbeddingEngine          → Thread-safe SentenceTransformer singleton (BGE-M3)
-  FAISSIndex               → Thread-safe build / load / search of IndexFlatIP
-  Retriever                → Embed query → search → threshold gate
-  PromptBuilder            → Assemble safe, context-bounded Gemini prompts
-  GeminiClient             → Robust Gemini wrapper (retry + back-off + quota guard)
-  AutonomousLearningFilter → 3-guardrail + Critic-LLM validation before persistence
-  RAGPipeline              → Orchestrate end-to-end retrieve-then-generate flow
-  retrieve()               → Public convenience entry-point (Django + CLI)
-
-Usage (CLI):
-  python rag1.py --build              # Build / rebuild FAISS index
-  python rag1.py --query "your text"  # Single query then exit
-  python rag1.py                      # Interactive REPL
-"""
 
 from __future__ import annotations
 
@@ -36,6 +13,7 @@ import re
 import sys
 import threading
 import time
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
@@ -82,6 +60,10 @@ EMBED_QUERY_PREFIX: str = "Represent this sentence for retrieval: "
 FAISS_TOP_K: int            = 5
 SIMILARITY_THRESHOLD: float = 0.45
 
+# FIX #1 note: LOCAL_FALLBACK_MIN_SCORE governs the stricter bar used
+# when Gemini is unavailable and we must paste a raw KB answer directly.
+LOCAL_FALLBACK_MIN_SCORE: float = 0.55
+
 GEMINI_MODEL: str         = "gemini-2.5-flash"
 GEMINI_TEMPERATURE: float = 0.15
 GEMINI_MAX_TOKENS: int    = 1024
@@ -104,10 +86,63 @@ GREETINGS: frozenset[str] = frozenset({
     "\u1019\u1004\u103a\u1039\u1002\u101c\u102c\u1015\u102b", "\u1040\u1032\u101c\u102d\u102f", "\u1040\u102d\u102f\u1004\u103a\u1038",
 })
 
-THANK_WORDS: frozenset[str] = frozenset({
-    "thanks", "thank you", "thx", "thz", "thanks a lot", "thank you so much",
-    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1010\u1004\u103a\u1015\u102b\u1078\u101a\u103a", "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1015\u1032", "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1015\u102b\u1015\u1032",
-    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1015\u102b", "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1017\u103b\u102c",
+# FIX #2: THANK_WORDS is split into "long" (safe as substrings, multi-char
+# phrases unlikely to appear inside unrelated words) and "short" tokens
+# (2-3 characters, which previously caused false positives — e.g. "ty"
+# matched inside "types", "duty", "safety", "quantity", "specialty").
+# Short tokens are matched as WHOLE WORDS ONLY via is_thanks(), never as
+# raw substrings.
+_THANK_WORDS_LONG: frozenset[str] = frozenset({
+    "thanks",
+    "thank you",
+    "thank you so much",
+    "thanks a lot",
+    "many thanks",
+    "thanks so much",
+    "thanks!",
+    "thnx",
+    "tnx",
+    "tysm",
+    "appreciate it",
+    "thank u",
+    "thank u so much",
+    "okay thanks",
+    "ok thanks",
+
+    # Myanmar
+    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038",
+    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1015\u102b",
+    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1010\u1004\u103a",
+    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1010\u1004\u103a\u1015\u102b\u1010\u101a\u103a",
+    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1021\u1019\u103b\u102c\u1038\u1000\u103c\u102e\u1038",
+    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1021\u1011\u1030\u1038\u1010\u1004\u103a\u1015\u102b\u1010\u101a\u103a",
+    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1021\u1019\u103b\u102c\u1038\u1000\u103c\u102e\u1038\u1010\u1004\u103a\u1015\u102b\u1010\u101a\u103a",
+    "\u1021\u1019\u103b\u102c\u1038\u1000\u103c\u102e\u1038\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1010\u1004\u103a\u1015\u102b\u1010\u101a\u103a",
+    "\u1016\u103c\u1031\u1015\u1031\u1038\u1010\u1032\u1037\u1021\u1010\u103d\u1000\u103a\u1000\u103b\u1031\u1038\u1007\u1030\u1038",
+    "\u1016\u103c\u1031\u1015\u1031\u1038\u101c\u102d\u102f\u1037\u1000\u103b\u1031\u1038\u1007\u1030\u1038",
+    "\u1016\u103c\u1031\u1015\u1031\u1038\u1010\u102c\u1000\u103b\u1031\u1038\u1007\u1030\u1038",
+    "\u101b\u103e\u1004\u103a\u1038\u1015\u103c\u1015\u1031\u1038\u1010\u1032\u1037\u1021\u1010\u103d\u1000\u103a\u1000\u103b\u1031\u1038\u1007\u1030\u1038",
+    "\u1000\u1030\u100a\u102e\u1015\u1031\u1038\u1010\u1032\u1037\u1021\u1010\u103d\u1000\u103a\u1000\u103b\u1031\u1038\u1007\u1030\u1038",
+    "\u1000\u1030\u100a\u102e\u1015\u1031\u1038\u101c\u102d\u102f\u1037\u1000\u103b\u1031\u1038\u1007\u1030\u1038",
+    "\u1010\u1004\u103a\u1015\u102b\u1010\u101a\u103a",
+    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1014\u1032\u102c\u1037",
+    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1001\u1004\u103a\u1017\u103b",
+    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1001\u1004\u103a\u1017\u103b\u102c",
+    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1015\u102b\u1001\u1004\u103a\u1017\u103b",
+    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1015\u102b\u1001\u1004\u103a\u1017\u103b\u102c",
+    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1010\u1004\u103a\u1015\u102b\u1010\u101a\u103a\u1001\u1004\u103a\u1017\u103b",
+    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1010\u1004\u103a\u1015\u102b\u1010\u101a\u103a\u1001\u1004\u103a\u1017\u103b\u102c",
+    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1015\u102b\u1014\u102d\u102c\u1037",
+    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1015\u102b\u1018\u103b",
+    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1015\u102b\u101b\u103e\u1004\u103a",
+    "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1010\u1004\u103a\u1015\u102b\u1010\u101a\u103a\u101b\u103e\u1004\u103a",
+    "\u1021\u102d\u102f\u1000\u1031\u1000\u103b\u1031\u1038\u1007\u1030\u1038",
+})
+
+# Short tokens matched as WHOLE WORDS ONLY (never as raw substrings) to
+# avoid false positives inside unrelated words.
+_THANK_WORDS_SHORT: frozenset[str] = frozenset({
+    "thx", "ty",
 })
 
 CALC_TRIGGERS: frozenset[str] = frozenset({
@@ -117,6 +152,46 @@ CALC_TRIGGERS: frozenset[str] = frozenset({
 LOAN_TYPE_TRIGGERS: frozenset[str] = frozenset({
     "how many loan", "types of loan", "what loan do you have",
     "\u1001\u103b\u1031\u1038\u1004\u103a\u1040\u1018\u101a\u103a\u1014\u103e\u1005\u103a\u1019\u103b\u102d\u102f\u1038", "\u1001\u103b\u1031\u1038\u1004\u103a\u1021\u1019\u103b\u102d\u102f\u1021\u1005\u102c\u1038",
+})
+
+# Borrow-intent root keywords — any query containing ANY of these signals
+# that the user wants to borrow money.  Using root substrings (not full
+# phrases) means we catch all natural Myanmar variations automatically:
+#   ချေးချင်တယ်, ချေးချင်လို့, ငွေချေးချင်, ငွေချေးလိုတယ် etc.
+#
+# IMPORTANT: This set is checked with `contains_any()` which does substring
+# matching, so short root words must be chosen carefully to avoid false
+# positives (e.g. do not add bare "ငွေ" alone — too broad).
+BORROW_INTENT_KEYWORDS: frozenset[str] = frozenset({
+    # Myanmar root substrings
+    "ချေးချင်",     # want to borrow (most common form)
+    "ချေးလို",      # want/need to borrow
+    "ငွေချေး",      # borrow money
+    "ချေးငွေရ",     # get a loan
+    "ချေးငွေလို",   # need a loan
+    "ချေးငွေလျှောက်", # apply for a loan
+    "ချေးငွေအကြောင်း",  # about loans
+    "ချေးငွေ အကြောင်း", # about loans (with space)
+    "ချေးငွေ သိ",   # want to know about loans
+    "ချေးနိုင်",    # can borrow
+    "ချေးပေး",      # lend (asking)
+    "ငွေလို",       # need money
+    "ငွေလိုတယ်",    # need money
+    "ချေးရမလား",    # can I borrow?
+    "ချေးလို့ရ",    # is it possible to borrow?
+    "ချေးလို့ရပါ",  # can borrow
+    "ပိုက်ဆံချေး",  # borrow money (colloquial)
+    "ပိုက်ဆံလို",   # need money (colloquial)
+    "loan လျှောက်",  # apply loan (mixed)
+    "loan apply",    # mixed Myanmar-English (catches "loan apply လုပ်ချင်တယ်")
+    "loan ရ",        # get loan (mixed)
+    "loan ချေး",     # borrow loan (mixed)
+    "loan လုပ်",     # do loan (mixed)
+    # English root phrases
+    "can i borrow", "want to borrow", "need a loan", "want a loan",
+    "i need money", "need money", "borrow money", "get a loan",
+    "apply for a loan", "how to apply", "how do i apply",
+    "loan application", "want to apply",
 })
 
 TRANSLATE_TRIGGERS: frozenset[str] = frozenset({
@@ -146,6 +221,10 @@ _GENERIC_ANSWER_MARKERS: frozenset[str] = frozenset({
     "\u1014\u102c\u1038\u1019\u101c\u100a\u103a\u1015\u102b", "\u1019\u101e\u102d\u1015\u102b", "\u1011\u1015\u103a\u1019\u1036\u1019\u1031\u1038\u1019\u1036\u1014\u102d\u102f\u1004\u103a",
     "don't understand", "not sure", "i don't know",
 })
+
+# Emoji set checked against the RAW (pre-normalization) query — see FIX #3.
+_LAUGH_EMOJI: tuple[str, ...] = ("\U0001F602", "\U0001F923", "\U0001F604", "\U0001F606")
+# i.e. 😂 🤣 😄 😆
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PROJECT RULES
@@ -258,6 +337,13 @@ _RE_COLLAPSE_WS: re.Pattern[str] = re.compile(r"\s+")
 _RE_MYANMAR:     re.Pattern[str] = re.compile(r"[\u1000-\u109f]")
 _RE_DIGITS:      re.Pattern[str] = re.compile(r"\d+\.?\d*")
 _RE_CTRL_CHARS:  re.Pattern[str] = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
+_RE_WORDS:       re.Pattern[str] = re.compile(r"\w+", re.UNICODE)
+
+# FIX #4: normalize_query() strips diacritic-normalizes and lowercases, but
+# now COLLAPSES whitespace to a single space instead of deleting it
+# entirely. Deleting whitespace previously broke every multi-word keyword
+# match (e.g. "can i borrow" -> "caniborrow", which never matches).
+_RE_STRIP_PUNCT_KEEP_MYANMAR: re.Pattern[str] = re.compile(r"[^\w\s\u1000-\u109F]")
 
 
 def clean_text(text: str) -> str:
@@ -269,6 +355,26 @@ def clean_text(text: str) -> str:
         return ""
     text = _RE_STRIP_PUNCT.sub(" ", text.lower().strip())
     return _RE_COLLAPSE_WS.sub(" ", text).strip()
+
+
+def normalize_query(text: str) -> str:
+    """
+    Unicode-normalize, lowercase, strip punctuation (preserving Myanmar
+    script), and collapse whitespace to single spaces.
+
+    FIX #4: previously this deleted ALL whitespace (re.sub(r"\\s+", "",
+    text)), which silently broke every multi-word keyword phrase in sets
+    like BORROW_INTENT_KEYWORDS (e.g. "can i borrow" -> "caniborrow",
+    "want to apply" -> "wanttoapply" — neither could ever match again).
+    It now collapses repeated whitespace to a single space instead.
+    """
+    if not text:
+        return ""
+    text = unicodedata.normalize("NFKC", text)
+    text = text.lower()
+    text = _RE_STRIP_PUNCT_KEEP_MYANMAR.sub(" ", text)
+    text = _RE_COLLAPSE_WS.sub(" ", text)
+    return text.strip()
 
 
 def detect_language(text: str) -> str:
@@ -291,6 +397,30 @@ def sanitize_input(text: str) -> str:
 def contains_any(haystack: str, needles: frozenset[str]) -> bool:
     """Return True if any needle is a substring of haystack."""
     return any(needle in haystack for needle in needles)
+
+
+def is_thanks(q: str) -> bool:
+    """
+    FIX #2: long thank-you phrases are still matched as substrings (safe,
+    since they're long enough not to appear accidentally inside unrelated
+    words). Short tokens ("ty", "thx") are matched as WHOLE WORDS ONLY,
+    so "ty" no longer falsely matches inside "types", "duty", "safety",
+    "quantity", "specialty", etc.
+    """
+    if contains_any(q, _THANK_WORDS_LONG):
+        return True
+    words = _RE_WORDS.findall(q)
+    return any(w in _THANK_WORDS_SHORT for w in words)
+
+
+def contains_laugh_emoji(raw_text: str) -> bool:
+    """
+    FIX #3: checked against the RAW (pre-normalization) query, since
+    normalize_query() strips emoji characters (they are neither \\w, \\s,
+    nor in the Myanmar Unicode block). Checking post-normalization text
+    meant this could never match.
+    """
+    return any(e in raw_text for e in _LAUGH_EMOJI)
 
 
 def _sha256_file(path: str) -> str:
@@ -484,7 +614,7 @@ class KnowledgeStore:
         if not os.path.exists(self.json_path):
             raise FileNotFoundError(f"loan.json not found at: {self.json_path}")
 
-        with open(self.json_path, "r", encoding="utf-8") as fh:
+        with open(self.json_path, "r", encoding="utf-8-sig") as fh:
             try:
                 raw: list[Any] = json.load(fh)
             except json.JSONDecodeError as exc:
@@ -884,6 +1014,13 @@ class GeminiClient:
     - Exponential back-off retry for transient errors.
     - Immediate abort for non-retryable auth / quota / bad-request errors.
     - Structured latency logging per attempt.
+
+    FIX #1 (SECURITY): the hardcoded fallback API key that previously lived
+    here has been removed entirely. GEMINI_API_KEY must now be set in the
+    environment; there is no embedded credential of any kind in source.
+    If the env var is missing or empty, is_available() / generate() /
+    generate_raw() will all cleanly return None/False rather than trying
+    to authenticate with a dead placeholder value.
     """
 
     def __init__(
@@ -1022,16 +1159,25 @@ class GeminiClient:
         return self.generate_raw(prompt, temperature=0.1)
 
     def _get_client(self) -> Optional[genai.Client]:
-        """Double-checked locking singleton."""
+        """
+        Double-checked locking singleton.
+
+        FIX #1 (SECURITY): no hardcoded fallback key. GEMINI_API_KEY must
+        be set in the environment. If it is missing, this returns None
+        cleanly and every caller (is_available/generate/generate_raw)
+        already handles that gracefully.
+        """
         if self._client is not None:
             return self._client
         with self._lock:
             if self._client is not None:
                 return self._client
-            api_key = os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6KpC-CNFRqWm6m6_FwRKDc0jLlI5PnNoR7LC1jPeUypVw").strip()
+            api_key = os.environ.get("GEMINI_API_KEY", "").strip()
             if not api_key:
                 log.error(
-                    "GeminiClient: GEMINI_API_KEY environment variable is not set."
+                    "GeminiClient: GEMINI_API_KEY environment variable is not set. "
+                    "Set it before starting the app, e.g. "
+                    "PowerShell: $env:GEMINI_API_KEY = \"<your key>\""
                 )
                 return None
             try:
@@ -1083,8 +1229,6 @@ class AutonomousLearningFilter:
     validate_and_save() catches and logs all exceptions so a filter
     failure never propagates to the caller.
     """
-
-
 
     def __init__(
         self,
@@ -1205,18 +1349,17 @@ class RAGPipeline:
 
     Request flow:
         sanitise
+        -> RAW-query emoji check (FIX #3 — must run before normalization)
+        -> normalize
         -> shortcut handlers  (safety / greeting / thanks / loan-types / calc)
         -> exact string match  (O(n), no embedding)
         -> FAISS semantic retrieval
         -> similarity threshold gate  (Gemini is never called below threshold)
         -> prompt assembly
         -> Gemini generation
+        -> local-KB fallback (only if match score clears LOCAL_FALLBACK_MIN_SCORE)
+        -> generic borrow-intent fallback (only if nothing else matched)
         -> autonomous learning filter  (fire-and-forget)
-
-    All shortcut handlers receive the lowercased query and return
-    Optional[RAGResponse].  The first non-None result short-circuits
-    the pipeline — heavy operations are never reached for greetings,
-    thank-yous, and calculator requests.
 
     Shortcut dispatch table is built once in __init__ to avoid repeated
     construction of the method list on every request.
@@ -1232,16 +1375,45 @@ class RAGPipeline:
         "\u1043\u104f \u101c\u1030\u101e\u102f\u1038\u1000\u102f\u1014\u103a\u1014\u103e\u1004\u103a\u1037 \u1021\u1011\u103d\u1031\u1011\u103d\u1031\u101e\u102f\u1038\u1005\u103d\u1032\u1019\u103e\u102f\u1001\u103b\u1031\u1038\u1004\u103a\u1040 (Consumption Loan)\n"
         "\u1018\u101a\u103a\u1001\u103b\u1031\u1038\u1004\u103a\u1040\u1021\u1000\u103c\u1031\u1038\u1004\u103a \u1015\u102d\u101a\u101e\u102d\u1001\u103b\u1004\u103a\u1015\u102b\u101e\u101c\u1032\u1038 \u1001\u1004\u103a\u1017\u103b\u102c?"
     )
+    _BORROW_INTENT = (
+        "ဟုတ်ကဲ့ ခင်ဗျာ၊ ကျွန်မတို့ Wondarmi Microfinance မှာ ချေးငွေ (၃) မျိုး ဝန်ဆောင်မှု ပေးနေပါတယ်ခင်ဗျာ —\n\n"
+        "၁။ 🌾 စိုက်ပျိုးရေးချေးငွေ (Agriculture Loan)\n"
+        "   လယ်ယာစိုက်ပျိုးရေး၊ မွေးမြူရေး နှင့် လယ်ယာသုံးစက်ကိရိယာ ဝယ်ယူလိုသူများအတွက်ခင်ဗျာ\n\n"
+        "၂။ 🏪 အသေးစားစီးပွားရေးချေးငွေ (Small Business Loan)\n"
+        "   ဆိုင်ဖွင့်ရန်၊ ကုန်ပစ္စည်းအရင်းထည့်ရန် သို့မဟုတ် လုပ်ငန်းချဲ့ရန်အတွက်ခင်ဗျာ\n\n"
+        "၃။ 👤 လူသုံးကုန်ချေးငွေ (Consumption Loan)\n"
+        "   လစာ/ဝင်ငွေရှိသောဝန်ထမ်းများ၊ ဆေးကုသစရိတ်၊ အိမ်ပြင်စရိတ် သို့မဟုတ် အရေးပေါ်လိုအပ်ချက်များအတွက်ခင်ဗျာ\n\n"
+        "လူကြီးမင်းက ဘယ်ရည်ရွယ်ချက်အတွက် ချေးလိုပါသလဲ ခင်ဗျာ? "
+        "(ဥပမာ — စိုက်ပျိုးရေး၊ ဆိုင်ဖွင့်ရန်၊ ဆေးကု၊ အိမ်ပြင် စသဖြင့်) "
+        "ပြောပေးပါက သင့်အတွက် အကောင်းဆုံး ချေးငွေအမျိုးအစားကို ညွှန်ပြပေးနိုင်ပါမည်ခင်ဗျာ။"
+    )
     _NO_INFO_MY  = (
-        "\u1000\u103b\u103d\u1014\u103a\u1010\u102c\u1037\u1037 Knowledge Base \u1011\u1032\u1019\u103e\u102c \u1012\u102e\u1019\u1031\u1038\u1001\u103a\u1014\u103e\u1032\u1037 \u1015\u1000\u101e\u1000\u103a "
-        "\u1021\u1001\u103b\u1000\u103a\u1021\u101c\u1000\u103a \u101b\u103e\u102c\u1019\u1010\u103d\u1031\u1037\u1015\u102b \u1001\u1004\u103a\u1017\u103b\u102c\u104d "
-        "\u1001\u103b\u1031\u1038\u1004\u103a\u1040\u1019\u103b\u102c\u1038\u1014\u103e\u1004\u103a\u1037 \u101e\u1000\u103a\u1006\u102d\u102f\u1004\u103a\u101e\u1031\u102c \u1019\u1031\u1038\u1019\u103c\u1014\u103a\u1038\u1015\u1031\u1038\u101e\u1031\u102c\u1019\u1031\u1038\u1019\u103c\u1014\u103a\u1038\u1015\u1031\u1038\u100a\u102c\u101c\u102c\u1038\u1010\u102c \u1019\u1031\u1038\u1019\u103c\u1014\u103a\u1038\u1015\u1031\u1038\u100a\u102c\u101c\u102c\u1038 \u1001\u1004\u103a\u1017\u103b\u102c\u104d"
+        "တောင်းပန်ပါတယ်ခင်ဗျာ။\n\n"
+        "ကျွန်ုပ်သည် Wonderami Microfinance ၏ "
+        "ချေးငွေဆိုင်ရာ AI Assistant ဖြစ်ပါသည်။\n\n"
+        "ချေးငွေနှင့်သက်ဆိုင်သော မေးခွန်းများကိုသာ "
+        "ဖြေကြားပေးနိုင်ပါသည်။\n\n"
+        "ဥပမာ -\n"
+        "• ချေးငွေအမျိုးအစားများ\n"
+        "• ချေးငွေလျှောက်ထားနည်း\n"
+        "• အတိုးနှုန်း\n"
+        "• လိုအပ်သောစာရွက်စာတမ်းများ\n"
+        "• ချေးငွေပြန်ဆပ်နည်း\n\n"
+        "သိလိုသည်များရှိပါက ဆက်လက်မေးမြန်းနိုင်ပါတယ်ခင်ဗျာ။"
     )
     _NO_INFO_EN  = (
-        "Sorry, I couldn't find relevant information in the Wonderami "
-        "knowledge base. Please ask questions related to our loan products."
+        "I'm here to assist with Wonderami Microfinance loan services only.\n\n"
+        "Please ask questions related to:\n"
+        "• Loan products\n"
+        "• Loan eligibility\n"
+        "• Loan application process\n"
+        "• Interest rates\n"
+        "• Required documents\n"
+        "• Loan repayment\n\n"
+        "Feel free to ask any loan-related questions."
     )
     _EMPTY_MY    = "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1015\u103c\u102f\u1024 \u1019\u1031\u1038\u1001\u103a\u1001\u103a\u1014\u103a\u1038\u1010\u1005\u103a\u1001\u102f\u1011\u100a\u1037\u101e\u103d\u1004\u103a\u1038\u1015\u1031\u1038\u100a\u102c\u101c\u102c\u1038 \u1001\u1004\u103a\u1017\u103b\u102c\u104d"
+    _EMOJI_REPLY = "ဟားဟား 😄\nချေးငွေနှင့်ပတ်သက်ပြီး သိလိုတာရှိရင် မေးမြန်းနိုင်ပါတယ်ခင်ဗျာ။"
 
     def __init__(
         self,
@@ -1259,7 +1431,10 @@ class RAGPipeline:
         self._engine    = engine
         self._index     = index
         self._filter    = AutonomousLearningFilter(store, gemini, index, engine)
-        # Build dispatch list once to avoid per-request list construction
+        # Build dispatch list once to avoid per-request list construction.
+        # NOTE: borrow-intent handler intentionally NOT in this list — it
+        # only runs as an explicit fallback in run(), after retrieval has
+        # had a chance to find a specific answer.
         self._shortcuts: list[Callable[[str], Optional[RAGResponse]]] = [
             self._handle_safety,
             self._handle_greeting,
@@ -1267,6 +1442,30 @@ class RAGPipeline:
             self._handle_loan_types,
             self._handle_calculator,
         ]
+
+    def _classify_intent(self, q: str) -> str:
+        """
+        q is expected to already be normalized (see normalize_query()).
+        Retained for any external callers that rely on it, though run()
+        no longer uses its return value for the emoji case (FIX #3 moved
+        that check earlier, against the raw query).
+        """
+        if contains_any(q, GREETINGS):
+            return "greeting"
+
+        if is_thanks(q):
+            return "thanks"
+
+        if contains_any(q, BORROW_INTENT_KEYWORDS):
+            return "loan"
+
+        if contains_any(q, CALC_TRIGGERS):
+            return "calculator"
+
+        if contains_any(q, LOAN_TYPE_TRIGGERS):
+            return "loan_info"
+
+        return "offtopic"
 
     # ── Main entry point ──────────────────────────────────────────────────────
 
@@ -1283,11 +1482,22 @@ class RAGPipeline:
         if not query:
             return RAGResponse(answer=self._EMPTY_MY, source="empty_input")
 
-        q_lower = query.lower().strip()
+        # FIX #3: emoji check runs against the RAW (sanitized but NOT yet
+        # normalized) query, since normalize_query() strips emoji chars
+        # entirely. Checking after normalization meant this could never
+        # fire, and emoji-only messages fell through to full FAISS
+        # retrieval instead of the canned reply.
+        if contains_laugh_emoji(query):
+            return RAGResponse(answer=self._EMOJI_REPLY, source="emoji_handler")
 
-        # Shortcut handlers — O(1) string ops, no embedding, no Gemini
+        # FIX #4: normalize_query now collapses whitespace instead of
+        # deleting it, so multi-word keyword phrases still match.
+        q_norm = normalize_query(query)
+
+        # Safety / greeting / thanks / loan-types-structural / calculator —
+        # checked against the normalized query.
         for handler in self._shortcuts:
-            result = handler(q_lower)
+            result = handler(q_norm)
             if result is not None:
                 return result
 
@@ -1296,31 +1506,52 @@ class RAGPipeline:
         if exact is not None:
             return exact
 
-        # FAISS semantic retrieval
+        # FAISS semantic retrieval — give specific KB content first priority
         results = self._retriever.retrieve(query)
-        if not results:
-            log.info("RAGPipeline: below threshold — returning no-info.")
-            return self._no_info(query)
+        if results:
+            best      = results[0]
+            prompt    = self._builder.build(query, results, chat_history)
+            ai_answer = self._gemini.generate(prompt)
 
-        best      = results[0]
-        prompt    = self._builder.build(query, results, chat_history)
-        ai_answer = self._gemini.generate(prompt)
+            if not ai_answer:
+                # Gemini unavailable or returned nothing. Only paste a raw
+                # KB answer if the match is reasonably strong; a weak match
+                # pasted verbatim is more misleading than a clear no-info
+                # message (see FIX discussion — LOCAL_FALLBACK_MIN_SCORE).
+                if best.score < LOCAL_FALLBACK_MIN_SCORE:
+                    log.warning(
+                        "RAGPipeline: Gemini unavailable and best local match "
+                        "too weak (score=%.3f) — returning no-info instead of "
+                        "a misleading answer.", best.score,
+                    )
+                    return self._no_info(query, score=best.score)
 
-        if not ai_answer:
-            log.warning(
-                "RAGPipeline: Gemini unavailable — using local KB answer ..."
+                log.warning(
+                    "RAGPipeline: Gemini unavailable — using local KB answer "
+                    "(score=%.3f, topic=%s).", best.score, best.document.topic,
+                )
+                return self._local_kb_answer(query, results)
+
+            self._filter.validate_and_save(query, ai_answer)
+            return RAGResponse(
+                answer=ai_answer,
+                source="gemini_rag",
+                matched_topic=best.document.topic,
+                matched_category=best.document.category,
+                similarity_score=best.score,
+                confidence=best.score,
             )
-            return self._local_kb_answer(query, results)
-        self._filter.validate_and_save(query, ai_answer)
 
-        return RAGResponse(
-            answer=ai_answer,
-            source="gemini_rag",
-            matched_topic=best.document.topic,
-            matched_category=best.document.category,
-            similarity_score=best.score,
-            confidence=best.score,
-        )
+        # Nothing scored above threshold — fall back to the generic
+        # "what's your purpose?" prompt if the message shows borrow intent,
+        # otherwise a plain no-info message.
+        if contains_any(q_norm, BORROW_INTENT_KEYWORDS):
+            borrow_response = self._handle_borrow_intent(q_norm)
+            if borrow_response is not None:
+                return borrow_response
+
+        log.info("RAGPipeline: below threshold — returning no-info.")
+        return self._no_info(query)
 
     def shutdown(self) -> None:
         """
@@ -1332,6 +1563,7 @@ class RAGPipeline:
         self._filter.shutdown()
 
     # ── Shortcut handlers ─────────────────────────────────────────────────────
+    # NOTE: all handlers below receive the NORMALIZED query (q_norm).
 
     def _handle_safety(self, q: str) -> Optional[RAGResponse]:
         if contains_any(q, BAD_WORDS):
@@ -1344,7 +1576,7 @@ class RAGPipeline:
         return None
 
     def _handle_thanks(self, q: str) -> Optional[RAGResponse]:
-        if contains_any(q, THANK_WORDS):
+        if is_thanks(q):
             return RAGResponse(answer=self._THANKS, source="thanks_handler")
         return None
 
@@ -1357,6 +1589,68 @@ class RAGPipeline:
         if contains_any(q, CALC_TRIGGERS):
             return RAGResponse(answer="LAUNCH_CALCULATOR", source="calculator_trigger")
         return None
+
+    def _handle_borrow_intent(self, q: str) -> Optional[RAGResponse]:
+        """
+        Catch any query where the user expresses intent to borrow money,
+        but nothing more specific was found via exact match or FAISS
+        retrieval. Returns the loan-types overview with a call-to-action,
+        so the user always gets a useful answer instead of "no information
+        found" — but only as a LAST-RESORT fallback now, not a first-pass
+        shortcut, so it no longer hijacks specific questions that FAISS
+        could otherwise answer correctly.
+        """
+        if contains_any(q, BORROW_INTENT_KEYWORDS):
+            return RAGResponse(
+                answer=self._BORROW_INTENT,
+                source="borrow_intent_handler",
+            )
+        return None
+
+    def _local_kb_answer(
+        self,
+        query: str,
+        results: list[RetrievalResult],
+    ) -> RAGResponse:
+        """
+        Use the best-scoring document as the primary answer. Only mention
+        (not paste in full) up to 2 additional strongly-related topics,
+        to avoid stitching together unrelated KB entries for vague queries.
+        """
+        best_doc = results[0].document
+        lang     = detect_language(query)
+        answer   = best_doc.answer.strip()
+
+        seen_topics: set[str] = {best_doc.topic}
+        extra_topics: list[str] = []
+        for r in results[1:]:
+            if r.document.topic in seen_topics:
+                continue
+            if r.score < 0.55:  # raised bar — only strong secondary matches
+                continue
+            seen_topics.add(r.document.topic)
+            extra_topics.append(r.document.topic)
+
+        if extra_topics:
+            if lang == "my":
+                topics_str = "\u1005 ".join(extra_topics[:2])
+                answer += (
+                    f"\n\n\u1011\u1015\u103a\u1019\u1036\u101e\u102d\u101c\u102d\u101e\u100a\u103a\u1019\u103b\u102c\u1038\u1021\u1000\u103c\u1031\u1038 "
+                    f"{topics_str} \u1021\u1000\u103c\u1031\u1038\u1004\u103a\u1019\u103b\u102c\u1038\u101b\u103e\u102d\u1015\u102b\u101e\u1016\u103c\u1004\u103a\u1037 "
+                    f"\u1019\u1031\u1038\u1019\u103c\u1014\u103a\u1038\u1014\u102d\u102f\u1004\u103a\u1015\u102b \u1001\u1004\u103a\u1017\u103b\u102c\u104d"
+                )
+            else:
+                topics_str = ", ".join(extra_topics[:2])
+                answer += f"\n\nYou may also ask about: {topics_str}."
+
+        return RAGResponse(
+            answer=answer,
+            source="local_kb_fallback",
+            matched_topic=best_doc.topic,
+            matched_category=best_doc.category,
+            similarity_score=results[0].score,
+            confidence=results[0].score,
+        )
 
     # ── Exact match ───────────────────────────────────────────────────────────
 
@@ -1386,6 +1680,7 @@ class RAGPipeline:
 
     def _no_info(self, query: str, score: float = 0.0) -> RAGResponse:
         lang = detect_language(query)
+
         return RAGResponse(
             answer=self._NO_INFO_MY if lang == "my" else self._NO_INFO_EN,
             source="threshold_gate",
@@ -1494,6 +1789,28 @@ def build_index(json_path: str = RAW_JSON_PATH) -> None:
 
 def _run_repl(json_path: str) -> None:
     """Blocking interactive REPL.  Not used in production Django."""
+    # ── Gemini API key check ──────────────────────────────────────────────────
+    # FIX #1 (SECURITY): no real/placeholder key value is ever printed here.
+    # Only generic setup instructions are shown; the person must supply
+    # their own real key from https://aistudio.google.com/apikey.
+    if not os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6KpC-CNFRqWm6m6_FwRKDc0jLlI5PnNoR7LC1jPeUypVw").strip():
+        print("\n" + "!" * 62)
+        print("  WARNING: GEMINI_API_KEY is not set.")
+        print("  The bot will answer from the knowledge base directly,")
+        print("  but full LLM-powered responses require a Gemini API key.")
+        print()
+        print("  To enable Gemini:")
+        print("  1. Get a key from https://aistudio.google.com/apikey")
+        print("  2. Set it as an environment variable, e.g.:")
+        print("     Windows PowerShell:")
+        print('       $env:GEMINI_API_KEY = "<your key here>"')
+        print("     Windows CMD:")
+        print('       set GEMINI_API_KEY=<your key here>')
+        print("     macOS/Linux:")
+        print('       export GEMINI_API_KEY="<your key here>"')
+        print("  Or add it permanently via System Properties > Environment Variables")
+        print("!" * 62 + "\n")
+
     pipeline = _get_pipeline(json_path)
     history: list[ChatTurn] = []
     is_calculating = False

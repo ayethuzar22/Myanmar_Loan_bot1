@@ -1460,10 +1460,25 @@ class RAGPipeline:
             ai_answer = self._gemini.generate(prompt)
 
             if not ai_answer:
+
+                LOCAL_FALLBACK_MIN_SCORE = 0.55
+
+                # safety check BEFORE using KB answer
+                if best.score < LOCAL_FALLBACK_MIN_SCORE:
+                    log.warning(
+                        "RAGPipeline: Gemini unavailable and best local match too weak "
+                        "(score=%.3f) — returning no-info instead of misleading answer.",
+                        best.score,
+                    )
+                    return self._no_info(query)
+
                 log.warning(
                     "RAGPipeline: Gemini unavailable — using local KB answer "
-                    "(score=%.3f, topic=%s).", best.score, best.document.topic,
+                    "(score=%.3f, topic=%s).",
+                    best.score,
+                    best.document.topic,
                 )
+
                 return self._local_kb_answer(query, results)
 
             self._filter.validate_and_save(query, ai_answer)
@@ -1474,6 +1489,7 @@ class RAGPipeline:
                 matched_category=best.document.category,
                 similarity_score=best.score,
                 confidence=best.score,
+                
             )
 
         # Nothing scored above threshold — NOW fall back to the generic
