@@ -1543,7 +1543,9 @@
             "loan rate",
             "borrowing cost",
             "rate of interest",
-            "interest percentage"
+            "interest percentage",
+            "အတိုးဘယ်လောက်",
+            "တစ်လအတိုး"
         ],
         "keywords": [
             "interest rate",
@@ -1581,7 +1583,9 @@
             "rate of return",
             "financing rate",
             "annual rate",
-            "loan interest"
+            "loan interest",
+            "what is your interest rate",
+            "loan interest rate percentage"
         ],
         "keywords": [
             "28%",
@@ -1956,7 +1960,12 @@
             "necessary papers",
             "document checklist",
             "application documents",
-            "loan paperwork"
+            "loan paperwork",
+            "ဘာစာရွက်စာတမ်းလိုလဲ",
+            "NRC လိုလား",
+            "ဘာတွေယူလာရမလဲ",
+            "documents required?",
+            "what documents do I need"
         ],
         "keywords": [
             "NRC",
@@ -2351,39 +2360,42 @@
     {
         "id": 64,
         "category": "Loan Amount",
-        "topic": "Loan Amount Limits",
+        "topic": "Loan Amount Limits Overview",
         "language": "my",
-        "question": "Wondarmi Microfinance ထံမှ ချေးငွေ ဘယ်လောက်အထိ ရရှိနိုင်ပါသနည်း?",
-        "answer": "ကျွန်ုပ်တို့ Wondarmi Microfinance တွင် ချေးငွေအမျိုးအစားနှင့် လုပ်ငန်းပမာဏ၊ ပြန်လည်ပေးဆပ်နိုင်စွမ်းအပေါ် မူတည်ပြီး အနည်းဆုံး ၅ သိန်းကျပ်မှ အများဆုံး သိန်း ၁၀၀ ကျပ်အထိ ထုတ်ချေးပေးနေပါတယ်ခင်ဗျာ။",
+        "question": "အများဆုံး ဘယ်လောက်အထိ ချေးယူနိုင်ပါသလဲ?",
+        "answer": "Wondarmi Microfinance တွင် တစ်ဦးချင်းချေးငွေ (Individual Loan) အတွက် အများဆုံး ကျပ်သိန်း ၂၀၀ အထိ ချေးယူနိုင်ပြီး၊ ဝိုင်းကြီးချုပ်ချေးငွေ (Group Loan) အတွက် အဖွဲ့ဝင်တစ်ဦးလျှင် အများဆုံး ကျပ်သိန်း ၃၀ အထိ ချေးယူနိုင်ပါသည်ခင်ဗျာ။ တိကျသောပမာဏမှာ လျှောက်ထားသူ၏ လုပ်ငန်း အတိုင်းအတာနှင့် ပြန်လည်ပေးဆပ်နိုင်စွမ်းအပေါ် မူတည်ပါသည်။",
         "aliases": [
+            "အများဆုံး ဘယ်လောက်ချေးလဲ",
+            "အများဆုံး ဘယ်လောက်ရနိုင်လဲ",
+            "ချေးငွေ limit ဘယ်လောက်လဲ",
+            "သိန်းဘယ်လောက်ချေးလို့ရလဲ",
+            "ဘယ်လောက်ထိရနိုင်လဲ",
+            "loan amount",
             "maximum loan amount",
-            "minimum loan",
-            "loan limit",
             "how much can I borrow",
-            "loan range",
-            "5 lakhs to 100 lakhs",
-            "money max value",
-            "borrowing capacity",
-            "loan ceiling",
-            "loan floor"
+            "che nway amount",
+            "loan limit",
+            "maximum amount",
+            "loan size",
+            "အများဆုံးပမာဏ"
         ],
         "keywords": [
             "maximum",
-            "minimum",
-            "5 lakhs",
-            "100 lakhs",
+            "200 lakhs",
+            "30 lakhs",
+            "individual loan",
+            "group loan",
             "loan amount",
             "limit",
-            "capacity",
-            "repayment ability",
-            "loan range",
-            "borrowing"
+            "သိန်း",
+            "ပမာဏ",
+            "အများဆုံး"
         ],
         "related_topics": [
-            "Civil Servant Loan",
-            "Consumption Loan Details",
-            "Loan Duration",
-            "MSME Loan Details"
+            "Individual Loan Amount Limit",
+            "Group Loan Amount Limit",
+            "Agriculture Loan Amount Limit",
+            "Loan Duration"
         ]
     },
     {
@@ -4853,7 +4865,7 @@
         "topic": "Savings Requirement Before Loan",
         "language": "my",
         "question": "ချေးငွေ ရရှိရန် ကြိုတင်ပြီး ငွေစုအကောင့် ဖွင့်ရပါသလား?",
-        "answer": "မလိုပါဘူးခင်ဗျာ။ ကျွန်ုပ်တို့ထံတွင် ချေးငွေရယူရန်အတွက် ကြိုတင်၍ အလှူငွေ သို့မဟုတ် စုငွေအကောင့် မဖြစ်မနေ ဖွင့်လှစ်ထားရန် မလိုအပ်ပါဘူးခင်ဗျာ。",
+        "answer": "မလိုပါဘူးခင်ဗျာ။ ကျွန်ုပ်တို့ထံတွင် ချေးငွေရယူရန်အတွက် ကြိုတင်၍ အလှူငွေ သို့မဟုတ် စုငွေအကောင့် မဖြစ်မနေ ဖွင့်လှစ်ထားရန် မလိုအပ်ပါဘူးခင်ဗျာ။",
         "aliases": [
             "savings prerequisite",
             "save before loan",
@@ -4922,26 +4934,199 @@
         ]
     },
     {
-    "id": 133,
-    "category": "Agriculture Loan",
-    "topic": "Agriculture Loan Amount Limit",
-    "language": "my",
-    "question": "စိုက်ပျိုးရေးချေးငွေ ဘယ်လောက်အထိ ချေးငွေရနိုင်ပါသနည်း?",
-    "answer": "စိုက်ပျိုးရေးချေးငွေအတွက် တစ်ဦးချင်း (Individual) လျှောက်ထားသူများအား အများဆုံး သိန်း ၂၀၀ (200 Lakhs MMK) အထိ ချေးငွေထုတ်ချေးပေးနိုင်ပါတယ်ခင်ဗျာ။ ချေးငွေပမာဏမှာ လုပ်ငန်းအတိုင်းအတာနှင့် ပြန်လည်ပေးဆပ်နိုင်စွမ်းအပေါ် မူတည်ပါသည်။",
-    "aliases": ["agriculture loan max amount", "200 lakhs agriculture", "individual agriculture loan limit"],
-    "keywords": ["agriculture", "maximum", "200 lakhs", "individual", "loan amount"],
-    "related_topics": ["Loan Amount Limits", "Agriculture Loan Details"]
+        "id": 133,
+        "category": "Agriculture Loan",
+        "topic": "Agriculture Loan Amount Limit",
+        "language": "my",
+        "question": "စိုက်ပျိုးရေးချေးငွေ ဘယ်လောက်အထိ ချေးငွေရနိုင်ပါသနည်း?",
+        "answer": "စိုက်ပျိုးရေးချေးငွေအတွက် တစ်ဦးချင်း (Individual) လျှောက်ထားသူများအား အများဆုံး သိန်း ၂၀၀ (200 Lakhs MMK) အထိ ချေးငွေထုတ်ချေးပေးနိုင်ပါတယ်ခင်ဗျာ။ ချေးငွေပမာဏမှာ လုပ်ငန်းအတိုင်းအတာနှင့် ပြန်လည်ပေးဆပ်နိုင်စွမ်းအပေါ် မူတည်ပါသည်။",
+        "aliases": [
+            "agriculture loan max amount",
+            "200 lakhs agriculture",
+            "individual agriculture loan limit",
+            "loan limit",
+            "စိုက်ပျိုးရေးချေးငွေ limit",
+            "farming loan maximum"
+        ],
+        "keywords": [
+            "agriculture",
+            "maximum",
+            "200 lakhs",
+            "individual",
+            "loan amount"
+        ],
+        "related_topics": [
+            "Loan Amount Limits Overview",
+            "Agriculture Loan Details",
+            "Individual Loan Amount Limit"
+        ]
     },
     {
-    "id": 133,
-    "category": "Bot Identity",
-    "topic": "How to Use This Assistant",
-    "language": "my",
-    "question": "ဒီ systemကို ဘယ်လိုသုံးရမလဲ",
-    "answer": "ကျွန်ုပ်သည် Wondarmi Microfinance ၏ ချေးငွေဆိုင်ရာ AI Assistant ဖြစ်ပါသည်။ ...",
-    "aliases": ["how to use this bot", "system အသုံးပြုနည်း"],
-    "keywords": ["how to use", "system", "help", "assistant"]
+        "id": 134,
+        "category": "Bot Identity",
+        "topic": "How to Use This Assistant",
+        "language": "my",
+        "question": "ဒီ systemကို ဘယ်လိုသုံးရမလဲ",
+        "answer": "ဟုတ်ကဲ့ခင်ဗျာ။ Wondarmi Microfinance Application ကို အောက်ပါအဆင့်များအတိုင်း အသုံးပြုနိုင်ပါတယ်။\n\n၁။ Account ဝင်ရောက်ခြင်း\n\nရှိပြီးသား Account ရှိပါက Login ဝင်ပါ။\nAccount မရှိသေးပါက Register ပြုလုပ်ပြီး Account ဖွင့်နိုင်ပါတယ်။\n\n၂။ ချေးငွေလျှောက်ထားခြင်း\n\nDashboard မှ Apply Loan ကို ရွေးချယ်ပါ။\nထို့နောက် တစ်ဦးချင်းချေးငွေ (Individual Loan) သို့မဟုတ် ဝိုင်းကြီးချုပ်ချေးငွေ (Group Loan) ကို ရွေးချယ်ပါ။\n\n၃။ ချေးငွေအမျိုးအစား ရွေးချယ်ခြင်း\n\nစိုက်ပျိုးရေးချေးငွေ (Agriculture Loan)\nအသေးစားစီးပွားရေးချေးငွေ (Small Business Loan)\nလူသုံးကုန်ချေးငွေ (Consumption Loan)\n\n၄။ ချေးလိုသည့်ပမာဏ ထည့်သွင်းခြင်း\n\nချေးယူလိုသည့် ပမာဏကို ထည့်သွင်းပါ။\nစနစ်မှ သတ်မှတ်ထားသော နှစ်စဉ်အတိုးနှုန်း ၂၈% အပေါ် မူတည်၍ ခန့်မှန်းပြန်လည်ပေးဆပ်ရမည့် ပမာဏကို တွက်ချက်ပြသပေးပါမည်။\n\n၅။ လျှောက်လွှာတင်ခြင်း\n\nအချက်အလက်များကို စစ်ဆေးပြီး Submit Application ကို နှိပ်၍ လျှောက်ထားနိုင်ပါတယ်။\n\n၆။ Pending အခြေအနေ\n\nလျှောက်လွှာတင်ပြီးနောက် Pending အခြေအနေသို့ ရောက်ရှိမည်ဖြစ်ပြီး Admin မှ စိစစ်ပေးပါမည်။\n\n၇။ အတည်ပြုရလဒ်\n\nစိစစ်ပြီးပါက Approved (အတည်ပြု) သို့မဟုတ် Rejected (ငြင်းပယ်) အဖြစ် အကြောင်းကြားပေးပါမည်။\n\nလျှောက်ထားလိုသည့် ချေးငွေအမျိုးအစား၊ လိုအပ်သော စာရွက်စာတမ်းများ၊ အတိုးနှုန်း သို့မဟုတ် ပြန်လည်ပေးဆပ်နည်းများကိုလည်း ဆက်လက်မေးမြန်းနိုင်ပါတယ်ခင်ဗျာ。",
+        "aliases": [
+            "how to use this bot",
+            "system အသုံးပြုနည်း",
+            "ဒီ application ကို ဘယ်လိုသုံးရမလဲ",
+            "App ကို ဘယ်လိုအသုံးပြုရမလဲ",
+            "ဒီ system က ဘာလုပ်လို့ရလဲ",
+            "ဒီ chatbot က ဘာတွေကူညီပေးနိုင်လဲ",
+            "Loan လျှောက်ဖို့ ဘာလုပ်ရမလဲ",
+            "အသုံးပြုနည်းပြပေးပါ",
+            "Application workflow ကိုပြပေးပါ",
+            "What can this application do?",
+            "How do I use this application"
+        ],
+        "keywords": [
+            "how to use",
+            "system",
+            "help",
+            "assistant",
+            "how to use application"
+        ],
+        "related_topics": [
+            "Application Process",
+            "Loan Amount Limits Overview",
+            "Basic Document Requirements"
+        ]
+    },
+    {
+        "id": 135,
+        "category": "Loan Amount",
+        "topic": "Individual Loan Amount Limit",
+        "language": "my",
+        "question": "တစ်ဦးချင်းချေးငွေ (Individual Loan) ဘယ်လောက်အထိ ချေးယူနိုင်ပါသလဲ?",
+        "answer": "တစ်ဦးချင်းချေးငွေ (Individual Loan) အတွက် အများဆုံး ကျပ်သိန်း ၂၀၀ (200 Lakhs MMK) အထိ၊ အများဆုံးသက်တမ်း ၂၄ လအထိ ချေးယူနိုင်ပါတယ်ခင်ဗျာ။ တိကျသောပမာဏမှာ လုပ်ငန်းအတိုင်းအတာနှင့် ပြန်လည်ပေးဆပ်နိုင်စွမ်းအပေါ် မူတည်ပါသည်။",
+        "aliases": [
+            "individual loan amount",
+            "individual loan limit",
+            "200 lakhs individual",
+            "single applicant loan amount",
+            "တစ်ဦးချင်း ဘယ်လောက်ရမလဲ",
+            "200 lakhs limit",
+            "individual maximum",
+            "solo loan limit",
+            "individual loan ဘယ်လောက်ရလဲ"
+        ],
+        "keywords": [
+            "individual loan",
+            "200 lakhs",
+            "24 months",
+            "maximum",
+            "single applicant",
+            "တစ်ဦးချင်း"
+        ],
+        "related_topics": [
+            "Loan Amount Limits Overview",
+            "Group Loan Amount Limit",
+            "Loan Duration"
+        ]
+    },
+    {
+        "id": 136,
+        "category": "Loan Amount",
+        "topic": "Group Loan Amount Limit",
+        "question": "ဝိုင်းကြီးချုပ်ချေးငွေ (Group Loan) တစ်ဦးလျှင် ဘယ်လောက်အထိ ချေးယူနိုင်ပါသလဲ?",
+        "answer": "ဝိုင်းကြီးချုပ်ချေးငွေ (Joint Liability Group Loan) အတွက် အဖွဲ့ဝင် တစ်ဦးလျှင် အများဆုံး ကျပ်သိန်း ၃၀ (30 Lakhs MMK) အထိ၊ အများဆုံး သက်တမ်း ၁၂ လအထိ ချေးယူနိုင်ပါတယ်ခင်ဗျာ။",
+        "aliases": [
+            "group loan amount",
+            "group loan limit",
+            "30 lakhs group",
+            "joint liability group amount",
+            "အဖွဲ့ဝင်တစ်ဦးလျှင် ဘယ်လောက်ရမလဲ",
+            "group loan maximum",
+            "အုပ်စုချေးငွေ ဘယ်လောက်ရမလဲ",
+            "group loan ဘယ်လောက်ရလဲ"
+        ],
+        "keywords": [
+            "group loan",
+            "30 lakhs",
+            "12 months",
+            "joint liability",
+            "per member",
+            "ဝိုင်းကြီးချုပ်"
+        ],
+        "language": "my",
+        "related_topics": [
+            "Loan Amount Limits Overview",
+            "Individual Loan Amount Limit",
+            "Loan Duration"
+        ]
+    },
+    {
+        "id": 137,
+        "category": "Loan Amount",
+        "topic": "Minimum Loan Amount",
+        "question": "အနည်းဆုံး ဘယ်လောက်ကနေ ချေးယူလို့ရပါသလဲ?",
+        "answer": "Wondarmi Microfinance တွင် ချေးငွေအမျိုးအစားပေါ် မူတည်၍ အနည်းဆုံး ကျပ်သိန်း ၅ ကနေ စတင်ချေးယူနိုင်ပါတယ်ခင်ဗျာ။ တိကျသော အနည်းဆုံးပမာဏကို ချေးငွေအမျိုးအစားနှင့် ရုံးခွဲမူဝါဒအပေါ် မူတည်၍ ဝန်ထမ်းများက ရှင်းပြပေးပါမည်။",
+        "aliases": [
+            "minimum loan amount",
+            "smallest loan",
+            "minimum amount",
+            "အနည်းဆုံး ဘယ်လောက်ရမလဲ",
+            "5 lakhs minimum",
+            "loan floor",
+            "minimum borrow amount",
+            "lowest loan amount"
+        ],
+        "keywords": [
+            "minimum",
+            "5 lakhs",
+            "floor",
+            "smallest amount",
+            "loan amount",
+            "အနည်းဆုံး"
+        ],
+        "language": "my",
+        "related_topics": [
+            "Loan Amount Limits Overview",
+            "Individual Loan Amount Limit",
+            "Group Loan Amount Limit"
+        ]
+    },
+    {
+        "id": 138,
+        "category": "Eligibility",
+        "topic": "Eligibility Criteria Overview",
+        "question": "ဘယ်သူတွေ ချေးငွေလျှောက်နိုင်လဲ",
+        "answer": "ချေးငွေလျှောက်ထားသူသည် အသက် ၁၈ နှစ်အထက်ဖြစ်ရမည်၊ ကိုယ်ပိုင်နေထိုင်ရာလိပ်စာရှိရမည်၊ ပြန်လည်ပေးဆပ်နိုင်သော ဝင်ငွေအခြေအနေရှိရမည်နှင့် ချေးငွေပြန်လည်ပေးဆပ်ရန် ဆန္ဒရှိရမည်。",
+        "aliases": [
+            "who can apply",
+            "eligibility",
+            "qualification",
+            "ဘယ်သူရနိုင်လဲ",
+            "လိုအပ်ချက်",
+            "who is eligible",
+            "loan eligibility criteria",
+            "eligibility requirements",
+            "am I eligible",
+            "ချေးငွေလျှောက်ဖို့ ဘာတွေလိုလဲ",
+            "ဘယ်လိုသူတွေ ချေးလို့ရလဲ",
+            "conditions to apply",
+            "လယ်သမားချေးလို့ရလား",
+            "ဆိုင်ပိုင်ရှင်ချေးလို့ရလား"
+        ],
+        "keywords": [
+            "age",
+            "income",
+            "eligible",
+            "apply",
+            "qualification",
+            "citizenship",
+            "guarantor",
+            "eligibility criteria"
+        ],
+        "language": "my",
+        "related_topics": [
+            "Citizenship Requirement",
+            "Age Limit",
+            "Guarantor Requirement",
+            "Basic Document Requirements",
+            "No Income Applicant"
+        ]
     }
-
-
 ]

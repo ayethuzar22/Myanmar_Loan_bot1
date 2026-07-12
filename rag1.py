@@ -60,6 +60,54 @@ EMBED_QUERY_PREFIX: str = "Represent this sentence for retrieval: "
 FAISS_TOP_K: int            = 5
 SIMILARITY_THRESHOLD: float = 0.45
 
+# ─────────────────────────────────────────────────────────────────────────────
+# INDIVIDUAL vs GROUP LOAN CAPS
+# ⚠️ PLACEHOLDER VALUES modeled on a competitor's (Sathapana) published rates
+# as a UX reference only. CONFIRM the real Wondarmi figures with the business
+# team before deploying — do not assume these numbers are correct for Wondarmi.
+# ─────────────────────────────────────────────────────────────────────────────
+INDIVIDUAL_LOAN_MAX_MMK: float = 20_000_000   # 200 lakhs — CONFIRM with Wondarmi
+INDIVIDUAL_LOAN_MAX_MONTHS: int = 24
+GROUP_LOAN_MAX_MMK: float = 3_000_000         # 30 lakhs — CONFIRM with Wondarmi
+GROUP_LOAN_MAX_MONTHS: int = 12
+DEFAULT_CALC_TENURE_MONTHS: int = 12          # used when user doesn't state tenure
+
+INDIVIDUAL_LOAN_KEYWORDS: frozenset[str] = frozenset({
+    "တစ်ဦးချင်း", "တစ်ဦးတည်း", "ကိုယ်ပိုင်",
+    "individual", "personally", "solo", "alone", "myself",
+})
+
+GROUP_LOAN_KEYWORDS: frozenset[str] = frozenset({
+    "ဝိုင်းကြီးချုပ်", "အဖွဲ့လိုက်", "အုပ်စုလိုက်",
+    "group", "joint liability", "joint", "team",
+})
+
+# Myanmar digit -> ASCII digit translation table, needed because loan
+# amounts and tenures in user messages are frequently written in Myanmar
+# numerals (e.g. "၅ သိန်း" = "5 lakhs"), which plain \d regex won't match.
+_MYANMAR_DIGIT_MAP = str.maketrans("၀၁၂၃၄၅၆၇၈၉", "0123456789")
+
+_RE_LAKH_AMOUNT: re.Pattern[str] = re.compile(
+    r"(\d+(?:\.\d+)?)\s*(?:သိန်း|lakh|lakhs)", re.IGNORECASE
+)
+_RE_PLAIN_MMK_AMOUNT: re.Pattern[str] = re.compile(
+    r"(\d{4,})\s*(?:ကျပ်|kyat|mmk)?", re.IGNORECASE
+)
+_RE_MONTHS: re.Pattern[str] = re.compile(
+    r"(\d{1,2})\s*(?:လ|month|months)", re.IGNORECASE
+)
+
+# Stable substring used to detect "we already asked individual-vs-group"
+# in the previous assistant turn, when resuming from chat_history.
+_LOAN_MODE_CLARIFY_MARKER: str = "ဘယ်အမျိုးအစားနှင့် လျှောက်ထားလိုပါသလဲ"
+_NUMERAL_TO_MODE: dict[str, str] = {
+    "1": "individual", "2": "group",
+    "၁": "individual", "၂": "group",
+}
+_ORDINAL_TO_MODE: dict[str, str] = {
+    "first": "individual", "second": "group",
+    "ပထမ": "individual", "ဒုတိယ": "group",
+}
 # FIX #1 note: LOCAL_FALLBACK_MIN_SCORE governs the stricter bar used
 # when Gemini is unavailable and we must paste a raw KB answer directly.
 LOCAL_FALLBACK_MIN_SCORE: float = 0.55
@@ -398,6 +446,70 @@ def contains_any(haystack: str, needles: frozenset[str]) -> bool:
     """Return True if any needle is a substring of haystack."""
     return any(needle in haystack for needle in needles)
 
+# ← PASTE STARTING HERE
+def _to_ascii_digits(text: str) -> str:
+    """Convert Myanmar numerals (၀-၉) to ASCII digits for regex matching."""
+    return text.translate(_MYANMAR_DIGIT_MAP)
+
+
+def extract_amount_mmk(text: str) -> Optional[float]:
+    """
+    Extract a loan amount in MMK from free text, handling both:
+      - "X သိန်း" / "X lakh(s)" (X * 100,000)
+      - Plain 4+ digit amounts optionally followed by ကျပ်/kyat/mmk
+    Handles Myanmar numerals transparently.
+    """
+    ascii_text = _to_ascii_digits(text)
+
+    m = _RE_LAKH_AMOUNT.search(ascii_text)
+    if m:
+        return float(m.group(1)) * 100_000
+
+    m2 = _RE_PLAIN_MMK_AMOUNT.search(ascii_text)
+    if m2:
+        val = float(m2.group(1))
+        if val >= 1000:
+            return val
+
+    return None
+
+
+def extract_months(text: str) -> Optional[int]:
+    """Extract a tenure in months from free text (e.g. '12 လ', '18 months')."""
+    ascii_text = _to_ascii_digits(text)
+    m = _RE_MONTHS.search(ascii_text)
+    if m:
+        val = int(m.group(1))
+        if 1 <= val <= 24:
+            return val
+    return None
+
+
+def detect_loan_mode(q_norm: str) -> Optional[str]:
+    """Return 'individual', 'group', or None based on keywords present."""
+    if contains_any(q_norm, GROUP_LOAN_KEYWORDS):
+        return "group"
+    if contains_any(q_norm, INDIVIDUAL_LOAN_KEYWORDS):
+        return "individual"
+    return None
+def resolve_mode_reply(raw_query: str, q_norm: str) -> Optional[str]:
+    """
+    Resolve a reply to the individual/group clarifying question, accepting
+    the keyword form ("individual"/"group"), a bare menu number ("1"/"2",
+    including Myanmar numerals), or an ordinal word ("first"/"ပထမ").
+    """
+    cleaned = re.sub(r"[^\w]", "", raw_query.strip())
+    if cleaned in _NUMERAL_TO_MODE:
+        return _NUMERAL_TO_MODE[cleaned]
+
+    mode = detect_loan_mode(q_norm)
+    if mode is not None:
+        return mode
+
+    for word, m in _ORDINAL_TO_MODE.items():
+        if word in q_norm:
+            return m
+    return None
 
 def is_thanks(q: str) -> bool:
     """
@@ -472,20 +584,20 @@ def calculate_microfinance_loan(principal: float, months: int) -> str:
     sep                 = "\u2500" * 50
 
     return (
-        f"\U0001f4b5 \u1001\u103b\u1031\u1038\u1004\u103a\u1040\u1021\u101b\u1004\u103a\u1038                              : {principal:,.0f} MMK\n"
-        f"\U0001f4c8 \u1014\u103e\u1005\u103a\u1005\u1031\u1021\u1078\u102d\u102f\u1038\u1014\u103e\u102f\u1014\u103a\u101e\u100a\u103a (Declining Balance 28%) : 28%\n"
-        f"\U0001f4c5 \u1015\u103c\u1014\u103a\u1006\u1015\u103a\u101b\u1019\u100a\u103a\u1037 \u101e\u1000\u103a\u1010\u1019\u103a\u1038                      : {months} \u101c\n"
+        f"💵 ချေးငွေအရင်း                              : {principal:,.0f} MMK\n"
+        f"📈 နှစ်စဉ်အတိုးနှုန်း (Declining Balance 28%) : 28%\n"
+        f"📅 ပြန်ဆပ်ရမည့် သက်တမ်း                      : {months} လ\n"
         f"{sep}\n"
-        f"\U0001f4b0 \u1011\u102f\u1010\u103a\u101a\u1030\u1001\u103b\u102d\u1014\u103a\u1010\u103d\u1004\u103a \u1001\u102f\u1014\u103e\u102d\u1019\u100a\u103a\u1037 \u1005\u101b\u102d\u1010\u103a\u1019\u103b\u102c\u1038\n"
-        f"   \u25b8 \u1040\u1014\u103a\u1006\u1031\u102c\u1004\u103a\u1001 (2%)          : {service_fee:,.0f} MMK\n"
-        f"   \u25b8 \u1016\u1030\u101c\u102f\u1036\u101b\u1031\u1038\u1000\u103c\u1031\u1038 (0.5%)    : {welfare_fee:,.0f} MMK\n"
-        f"\U0001f4b5 \u101c\u1000\u103a\u1040\u101a\u103a\u101b\u101b\u103e\u102d\u1019\u100a\u103a\u1037 \u1004\u103a\u1040\u101e\u102c\u101e\u101e\u100a\u103a  : {actual_disbursed:,.0f} MMK\n"
+        f"💰 ထုတ်ယူချိန်တွင် နုတ်ယူမည့် စရိတ်များ\n"
+        f"   ▸ ဝန်ဆောင်ခ (2%)          : {service_fee:,.0f} MMK\n"
+        f"   ▸ ဖူလုံရေးကြေး (0.5%)    : {welfare_fee:,.0f} MMK\n"
+        f"💵 လက်ဝယ်ရရှိမည့် ငွေပမာဏ  : {actual_disbursed:,.0f} MMK\n"
         f"{sep}\n"
-        f"\U0001f4c8 \u1015\u103c\u1014\u103a\u101c\u100a\u103a\u1015\u1031\u1038\u1006\u1015\u103a\u101b\u1019\u100a\u103a\u1037 \u1021\u1001\u103c\u1031\u1021\u1014\u1031\n"
-        f"   \u25b8 \u1005\u102f\u1005\u102f\u1015\u1031\u102c\u1004\u103a\u1038 \u1000\u103b\u101e\u1004\u103a\u1037\u101e\u100a\u103a\u1037 \u1021\u1078\u102d\u102f\u1038             : {total_interest:,.0f} MMK\n"
-        f"   \u25b8 \u1005\u102f\u1005\u102f\u1015\u1031\u102c\u1004\u103a\u1038 \u1015\u103c\u1014\u103a\u1006\u1015\u103a\u101b\u1019\u100a\u103a\u1037 \u1004\u103a\u1040 (\u1021\u101b\u1004\u103a\u1038+\u1021\u1078\u102d\u102f\u1038) : {total_payable:,.0f} MMK\n"
-        f"     (\u1015\u1011\u1019\u101c \u1021\u1019\u103b\u102c\u1006\u102f\u1036\u1038 \u1006\u1015\u103a\u101b\u1024 \u101c\u1005\u1031\u102c\u1019\u103a \u1078\u1016\u103c\u100a\u103a\u1038\u1016\u103c\u100a\u103a\u1038 \u101c\u103b\u1031\u102c\u100a\u100a\u103a\u101e\u103d\u102c\u1038\u1015\u102b\u1019\u100a\u103a)\n"
-        f"   \u27a1\ufe0f  \u1015\u103b\u1019\u103a\u1019\u103b\u103e \u101c\u1005\u1031\u102c\u1019\u103a\u1006\u1015\u103a\u101b\u1019\u100a\u103a\u1037 \u1004\u103a\u1040               : {avg_monthly_payment:,.0f} MMK / \u101c"
+        f"📈 ပြန်လည်ပေးဆပ်ရမည့် အခြေအနေ\n"
+        f"   ▸ စုစုပေါင်း ကျသင့်သည့် အတိုး             : {total_interest:,.0f} MMK\n"
+        f"   ▸ စုစုပေါင်း ပြန်ဆပ်ရမည့် ငွေ (အရင်း+အတိုး) : {total_payable:,.0f} MMK\n"
+        f"     (ပထမလ အများဆုံး ဆပ်ရပြီး လစဉ် တဖြည်းဖြည်း လျော့ညွှန်းသွားပါမည်)\n"
+        f"   ➡️  ပျမ်းမျှ လစဉ်ဆပ်ရမည့် ငွေ               : {avg_monthly_payment:,.0f} MMK / လ"
     )
 
 
@@ -732,14 +844,35 @@ class EmbeddingEngine:
         return self.encode([f"{EMBED_QUERY_PREFIX}{query}"])
 
     def _get_model(self) -> SentenceTransformer:
-        """Double-checked locking for thread-safe lazy init."""
+        """Double-checked locking for thread-safe lazy init, with retry on
+        transient network failures during the first-time HF Hub download."""
         if self._model is not None:
             return self._model
         with self._lock:
             if self._model is None:
                 log.info("EmbeddingEngine: loading '%s' ...", self.model_name)
-                self._model = SentenceTransformer(self.model_name)
-                log.info("EmbeddingEngine: model ready.")
+                last_exc: Optional[Exception] = None
+                for attempt in range(1, 4):
+                    try:
+                        self._model = SentenceTransformer(self.model_name)
+                        log.info("EmbeddingEngine: model ready.")
+                        break
+                    except Exception as exc:
+                        last_exc = exc
+                        log.warning(
+                            "EmbeddingEngine: load attempt %d/3 failed (%s) — "
+                            "retrying in 3s...", attempt, exc,
+                        )
+                        time.sleep(3)
+                else:
+                    log.error(
+                        "EmbeddingEngine: failed to load '%s' after 3 attempts — %s. "
+                        "Check network connectivity to huggingface.co. Once the "
+                        "model downloads successfully once, it's cached locally "
+                        "and future runs won't need network access for it.",
+                        self.model_name, last_exc,
+                    )
+                    raise last_exc
         return self._model  # type: ignore[return-value]
 
 
@@ -1375,6 +1508,14 @@ class RAGPipeline:
         "\u1043\u104f \u101c\u1030\u101e\u102f\u1038\u1000\u102f\u1014\u103a\u1014\u103e\u1004\u103a\u1037 \u1021\u1011\u103d\u1031\u1011\u103d\u1031\u101e\u102f\u1038\u1005\u103d\u1032\u1019\u103e\u102f\u1001\u103b\u1031\u1038\u1004\u103a\u1040 (Consumption Loan)\n"
         "\u1018\u101a\u103a\u1001\u103b\u1031\u1038\u1004\u103a\u1040\u1021\u1000\u103c\u1031\u1038\u1004\u103a \u1015\u102d\u101a\u101e\u102d\u1001\u103b\u1004\u103a\u1015\u102b\u101e\u101c\u1032\u1038 \u1001\u1004\u103a\u1017\u103b\u102c?"
     )
+
+    _LOAN_MODE_CLARIFY = (
+        "ချေးငွေတောင်းဆိုမှုအမျိုးအစား (၂) မျိုးရှိပါတယ်ခင်ဗျာ —\n\n"
+        "၁။ တစ်ဦးချင်းချေးငွေ (Individual Loan)\n"
+        "၂။ ဝိုင်းကြီးချုပ်ချေးငွေ (Joint Liability Group Loan)\n\n"
+        "လူကြီးမင်း ဘယ်အမျိုးအစားနှင့် လျှောက်ထားလိုပါသလဲ ခင်ဗျာ?"
+    )
+
     _BORROW_INTENT = (
         "ဟုတ်ကဲ့ ခင်ဗျာ၊ ကျွန်မတို့ Wondarmi Microfinance မှာ ချေးငွေ (၃) မျိုး ဝန်ဆောင်မှု ပေးနေပါတယ်ခင်ဗျာ —\n\n"
         "၁။ 🌾 စိုက်ပျိုးရေးချေးငွေ (Agriculture Loan)\n"
@@ -1494,6 +1635,21 @@ class RAGPipeline:
         # deleting it, so multi-word keyword phrases still match.
         q_norm = normalize_query(query)
 
+        amount = extract_amount_mmk(query)
+        mode = detect_loan_mode(q_norm)
+
+        if amount is not None and mode is not None:
+            return self._answer_loan_mode_calculation(amount, mode, query)
+
+        if self._is_awaiting_loan_mode(chat_history):
+            resolved_mode = mode or resolve_mode_reply(query, q_norm)
+            if resolved_mode is not None:
+                pending_amount = self._find_pending_loan_amount(chat_history)
+                if pending_amount is not None:
+                    return self._answer_loan_mode_calculation(pending_amount, resolved_mode, query)
+
+        if amount is not None and contains_any(q_norm, LOAN_DOMAIN_KEYWORDS):
+            return RAGResponse(answer=self._LOAN_MODE_CLARIFY, source="loan_mode_clarification")
         # Safety / greeting / thanks / loan-types-structural / calculator —
         # checked against the normalized query.
         for handler in self._shortcuts:
@@ -1561,6 +1717,78 @@ class RAGPipeline:
         atexit handler) so in-flight rebuilds finish before process exit.
         """
         self._filter.shutdown()
+
+    def _is_awaiting_loan_mode(self, chat_history: Optional[list[ChatTurn]]) -> bool:
+        if not chat_history:
+            return False
+        last = chat_history[-1]
+        return last.role == "assistant" and _LOAN_MODE_CLARIFY_MARKER in last.content
+
+    def _find_pending_loan_amount(self, chat_history) -> Optional[float]:
+        if not self._is_awaiting_loan_mode(chat_history):
+            return None
+        if len(chat_history) < 2:
+            return None
+        prev_user = chat_history[-2]
+        if prev_user.role != "user":
+            return None
+        return extract_amount_mmk(prev_user.content)
+
+    def _answer_loan_mode_calculation(  # ← now a proper sibling method
+            self, amount_mmk: float, mode: str, query: str
+    ) -> RAGResponse:
+        lang = detect_language(query)
+        if mode == "individual":
+            cap_amount, cap_months, mode_label_my, mode_label_en = (
+                INDIVIDUAL_LOAN_MAX_MMK, INDIVIDUAL_LOAN_MAX_MONTHS,
+                "တစ်ဦးချင်းချေးငွေ", "Individual Loan",
+            )
+        else:
+            cap_amount, cap_months, mode_label_my, mode_label_en = (
+                GROUP_LOAN_MAX_MMK, GROUP_LOAN_MAX_MONTHS,
+                "ဝိုင်းကြီးချုပ်ချေးငွေ", "Joint Liability Group Loan",
+            )
+
+        if amount_mmk > cap_amount:
+            cap_lakhs = cap_amount / 100_000
+            if lang == "my":
+                answer = (
+                    f"{mode_label_my} အတွက် တောင်းဆိုနိုင်သည့် အများဆုံးပမာဏမှာ "
+                    f"သိန်း {cap_lakhs:,.0f} ({cap_amount:,.0f} MMK) ဖြစ်ပါတယ်ခင်ဗျာ။ "
+                    f"တောင်းဆိုထားသော ပမာဏသည် ၎င်းထက် ပိုများနေပါသည်။ "
+                    f"ကျေးဇူးပြု၍ ပမာဏလျှော့ချ၍ မေးမြန်းပါ (သို့) အခြားချေးငွေအမျိုးအစားကို "
+                    f"စဉ်းစားကြည့်ပါရန် တိုက်တွန်းအပ်ပါတယ်ခင်ဗျာ။"
+                )
+            else:
+                answer = (
+                    f"The maximum amount available under {mode_label_en} is "
+                    f"{cap_lakhs:,.0f} lakhs ({cap_amount:,.0f} MMK). "
+                    f"The requested amount exceeds this. Please ask again with "
+                    f"a lower amount, or consider the other loan mode."
+                )
+            return RAGResponse(answer=answer, source="loan_mode_cap_exceeded")
+
+        months = extract_months(query) or DEFAULT_CALC_TENURE_MONTHS
+        months = min(months, cap_months)
+        months = max(months, 6)
+
+        try:
+            calc_text = calculate_microfinance_loan(amount_mmk, months)
+        except ValueError as exc:
+            log.error("_answer_loan_mode_calculation: calculator error — %s", exc)
+            return self._no_info(query)
+
+        prefix = (
+            f"{mode_label_my} ({months} \u101c) \u1021\u1010\u103d\u1000\u103a "
+            f"\u1078\u1000\u103a\u1001\u103b\u1000\u103a\u1019\u103e\u102f\u1019\u103b\u102c\u1038\u2014\n\n"
+            if lang == "my"
+            else f"{mode_label_en} calculation ({months} months):\n\n"
+        )
+        return RAGResponse(
+            answer=prefix + calc_text,
+            source="loan_mode_calculator",
+            matched_category=mode_label_en,
+        )
 
     # ── Shortcut handlers ─────────────────────────────────────────────────────
     # NOTE: all handlers below receive the NORMALIZED query (q_norm).

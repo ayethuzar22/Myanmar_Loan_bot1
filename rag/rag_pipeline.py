@@ -1,10 +1,11 @@
-from __future__ import annotations
 
+from __future__ import annotations
 import atexit
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Optional
-
+from retrieval.reranker import Reranker
+from retrieval.intent_classifier import filter_by_intent
 from config import (
     BAD_WORDS,
     BORROW_INTENT_KEYWORDS,
@@ -16,6 +17,7 @@ from config import (
     INDIVIDUAL_LOAN_MAX_MMK,
     INDIVIDUAL_LOAN_MAX_MONTHS,
     LEARNING_REBUILD_ASYNC,
+    LLM_PROVIDER,
     LOAN_DOMAIN_KEYWORDS,
     LOAN_TYPE_TRIGGERS,
     LOCAL_FALLBACK_MIN_SCORE,
@@ -28,7 +30,8 @@ from config import (
 )
 from embeddings.embedding_engine import EmbeddingEngine
 from knowledge.knowledge_store import KnowledgeStore
-
+# from llm.gemini_client import GeminiClient
+from llm.qwen_client import QwenClient
 from models.chat_turn import ChatTurn
 from models.rag_response import RAGResponse
 from models.retrieval_result import RetrievalResult
@@ -59,6 +62,13 @@ from utils.validators import sanitize_input
 from vectorstore.faiss_index import FAISSIndex
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# MODULE-LEVEL CONSTANTS / HELPERS
+# (previously mis-nested inside AutonomousLearningFilter — that's what
+# caused the NameError: class-scoped names aren't visible as bare module
+# names when called without `self.`)
+# ─────────────────────────────────────────────────────────────────────────────
+
 _STAGE_FOLLOWUP_QUESTIONS: dict[LoanStage, str] = {
     LoanStage.CATEGORY: "ဘယ်လိုချေးငွေအမျိုးအစားကို စိတ်ဝင်စားပါသလဲ ခင်ဗျာ? (စိုက်ပျိုးရေး / စီးပွားရေး / လူသုံးကုန်)",
     LoanStage.AMOUNT:   "ဘယ်လောက်ချေးငွေ လိုအပ်ပါသလဲ ခင်ဗျာ?",
@@ -82,6 +92,16 @@ def _build_retrieval_query(
     q_norm: str,
     chat_history: Optional[list[ChatTurn]],
 ) -> str:
+    """
+    For short/pronoun-heavy follow-ups ("how much can get", "ဘယ်လောက်ရလဲ"),
+    the raw query alone often lacks the topic word entirely, causing FAISS
+    to drift toward weak generic matches. Prepending the most recent user
+    message gives the embedding model the missing topic context.
+
+    NOTE: this only affects what gets embedded for FAISS search — the
+    original `query` is still used everywhere else (exact match, prompt
+    building, entity extraction), so nothing else in the flow changes.
+    """
     if not chat_history or not _looks_like_followup(q_norm):
         return query
     for turn in reversed(chat_history):
@@ -90,7 +110,23 @@ def _build_retrieval_query(
     return query
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# AUTONOMOUS LEARNING FILTER
+# ─────────────────────────────────────────────────────────────────────────────
+
 class AutonomousLearningFilter:
+    """
+    Validates AI-generated answers before persisting them to loan.json.
+
+    Three sequential guardrail layers run first (cheap string ops).
+    Only answers that clear all three are sent to the Gemini Critic,
+    which validates against CORE_PROJECT_RULES.  VALID answers are saved
+    and the FAISS index is rebuilt in-process for instant future retrieval.
+
+    validate_and_save() catches and logs all exceptions so a filter
+    failure never propagates to the caller.
+    """
+
     def __init__(
         self,
         store:  KnowledgeStore,
@@ -104,18 +140,21 @@ class AutonomousLearningFilter:
         self._index  = index
         self._engine = engine
         self._rebuild_async = rebuild_async
+        # self._reranker = Reranker()
         self._executor: Optional[ThreadPoolExecutor] = (
             ThreadPoolExecutor(max_workers=1, thread_name_prefix="faiss-rebuild")
             if rebuild_async else None
         )
 
     def validate_and_save(self, question: str, answer: str) -> None:
+        """Fire-and-forget validation + persistence.  Never raises."""
         try:
             self._run(question, answer)
         except Exception as exc:
             log.error("AutonomousLearningFilter: unexpected error — %s", exc)
 
     def shutdown(self) -> None:
+        """Gracefully drain the rebuild executor (call on app shutdown)."""
         if self._executor is not None:
             self._executor.shutdown(wait=True)
 
@@ -180,7 +219,15 @@ class AutonomousLearningFilter:
             log.error("AutoFilter: FAISS rebuild failed — %s", exc)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# RAG PIPELINE
+# ─────────────────────────────────────────────────────────────────────────────
+
 class RAGPipeline:
+    """
+    Orchestrates the full retrieve-then-generate pipeline.
+    """
+
     _ABUSE_MY    = "\u1000\u103b\u1031\u1038\u1007\u1030\u1038\u1015\u103c\u102f\u1024 \u101c\u1031\u1038\u1005\u102c\u101e\u1031\u102c\u1005\u1000\u102c\u1038\u1019\u103b\u102c\u1038\u1016\u103c\u1004\u103a\u1037 \u1019\u1031\u1038\u1019\u103c\u1014\u103a\u1038\u1015\u1031\u1038\u101e\u1031\u102c\u1021\u1016\u103c\u1031\u1000\u103b\u100a\u103a\u1038 \u1019\u1031\u1000\u1039\u1010\u102c\u101b\u1015\u103a\u1001\u1036\u1021\u1015\u103a\u1015\u102b\u101e\u100a\u103a \u1001\u1004\u103a\u1014\u100a\u103a\u104d"
     _GREETING    = "\u1019\u1004\u103a\u1039\u1002\u101c\u102c\u1015\u102b \u1001\u1004\u103a\u1017\u103b\u102c! \u1000\u103b\u103d\u1014\u103a\u1010\u102c\u1037\u1037\u101b\u1032\u1037\u101e\u1031\u102c \u1005\u102d\u102f\u1000\u103a\u1015\u103b\u102d\u102f\u1038\u101b\u1031\u1038\u1001\u103b\u1031\u1038\u1004\u103a\u1040\u104a \u1021\u101e\u1031\u1038\u1005\u102c\u1038\u1005\u102e\u1038\u1015\u103a\u1000\u102c\u101b\u1031\u1038\u101c\u102f\u1015\u103a\u1004\u1014\u103a\u1038 \u1014\u1032\u1037 \u101c\u1030\u101e\u102f\u1038\u1000\u102f\u1014\u103a\u1001\u103b\u1031\u1038\u1004\u103a\u1040\u1019\u103b\u102c\u1038\u1021\u1000\u103c\u1031\u1038\u1004\u103a \u101c\u103d\u1010\u101c\u1015\u103a\u1005\u103d\u102c \u1019\u1031\u1038\u1019\u103c\u1014\u103a\u1038\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u1078\u101a\u103a \u1001\u1004\u103a\u1017\u103b\u102c\u104d"
     _THANKS      = "\u1021\u102c\u1038\u1019\u1014\u102c\u1078\u1019\u1038 \u1019\u1031\u1038\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u1078\u101a\u103a \u1001\u1004\u103a\u1017\u103b\u102c! \u1014\u1031\u102c\u1011\u1015\u103a \u101e\u102d\u101c\u102d\u101e\u100a\u103a\u1019\u103b\u102c\u1038 \u101b\u103e\u102d\u1015\u102b\u1000 \u1011\u1015\u103a\u1019\u1036\u1019\u1031\u1038\u1019\u103c\u1014\u103a\u1038\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u101e\u100a\u103a \u1001\u1004\u103a\u1017\u103b\u102c\u104d"
@@ -245,6 +292,7 @@ class RAGPipeline:
         llm:       QwenClient,
         engine:    EmbeddingEngine,
         index:     FAISSIndex,
+
         state_machine: Optional[LoanStateMachine] = None,
     ) -> None:
         self._store     = store
@@ -255,6 +303,7 @@ class RAGPipeline:
         self._index     = index
         self._filter    = AutonomousLearningFilter(store, llm, index, engine)
         self._state_machine = state_machine or LoanStateMachine()
+        self._reranker = Reranker()
         self._shortcuts: list[Callable[[str], Optional[RAGResponse]]] = [
             self._handle_safety,
             self._handle_greeting,
@@ -276,6 +325,8 @@ class RAGPipeline:
             return "loan_info"
         return "offtopic"
 
+    # ── Main entry point ──────────────────────────────────────────────────────
+
     def run(
         self,
         query: str,
@@ -295,6 +346,12 @@ class RAGPipeline:
         mode = detect_loan_mode(q_norm)
         tenure = extract_months(query)
 
+        # ── Slot-gated state-machine capture ─────────────────────────────
+        # Only intercepts the turn (and advances stage) when the message
+        # actually answers the CURRENTLY pending slot. Anything else falls
+        # through to shortcuts/exact-match/FAISS below untouched — this is
+        # the ONLY state-machine block in run(); the old unconditional
+        # duplicate has been removed.
         if memory is not None:
             captured_slot_this_turn = False
 
@@ -369,6 +426,18 @@ class RAGPipeline:
 
         retrieval_query = _build_retrieval_query(query, q_norm, chat_history)
         results = self._retriever.retrieve(retrieval_query)
+        results = self._reranker.rerank(retrieval_query, results)
+        results = results[:3]
+
+        results, detected_intent = filter_by_intent(q_norm, results)
+        if detected_intent is not None:
+            log.info(
+                "RAGPipeline: intent=%s detected — filtered to %d "
+                "candidate(s) (topics: %s).",
+                detected_intent.value,
+                len(results),
+                [r.document.topic for r in results],
+            )
         if results:
             best      = results[0]
             prompt    = self._builder.build(query, results, chat_history)
@@ -377,14 +446,14 @@ class RAGPipeline:
             if not ai_answer:
                 if best.score < LOCAL_FALLBACK_MIN_SCORE:
                     log.warning(
-                        "RAGPipeline: Qwen unavailable and best local match "
+                        "RAGPipeline: Gemini unavailable and best local match "
                         "too weak (score=%.3f) — returning no-info instead of "
                         "a misleading answer.", best.score,
                     )
                     return self._no_info(query, score=best.score)
 
                 log.warning(
-                    "RAGPipeline: Qwen unavailable — using local KB answer "
+                    "RAGPipeline: Gemini unavailable — using local KB answer "
                     "(score=%.3f, topic=%s).", best.score, best.document.topic,
                 )
                 return self._local_kb_answer(query, results)
@@ -489,6 +558,8 @@ class RAGPipeline:
             matched_category=mode_label_en,
         )
 
+    # ── Shortcut handlers ─────────────────────────────────────────────────────
+
     def _handle_safety(self, q: str) -> Optional[RAGResponse]:
         if contains_any(q, BAD_WORDS):
             return RAGResponse(answer=self._ABUSE_MY, source="safety_filter")
@@ -562,6 +633,8 @@ class RAGPipeline:
             confidence=results[0].score,
         )
 
+    # ── Exact match ───────────────────────────────────────────────────────────
+
     def _exact_match(self, query: str) -> Optional[RAGResponse]:
         doc = self._store.find_exact(clean_text(query))
         if doc is None:
@@ -590,6 +663,10 @@ class RAGPipeline:
             similarity_score=score,
         )
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PROCESS-LEVEL SINGLETON
+# ─────────────────────────────────────────────────────────────────────────────
 
 _pipeline:      Optional[RAGPipeline] = None
 _pipeline_lock: threading.Lock        = threading.Lock()
@@ -635,6 +712,10 @@ def _get_pipeline(json_path: str = RAW_JSON_PATH) -> RAGPipeline:
             atexit.register(_pipeline.shutdown)
     return _pipeline  # type: ignore[return-value]
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PUBLIC API
+# ─────────────────────────────────────────────────────────────────────────────
 
 def retrieve(
     query:         str,
