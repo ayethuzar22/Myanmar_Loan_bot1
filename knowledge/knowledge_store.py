@@ -1,9 +1,3 @@
-"""
-knowledge/knowledge_store.py — KnowledgeStore class.
-
-Thread-safe loader, validator, and in-process cache for loan.json.
-Moved verbatim from rag1.py.
-"""
 
 from __future__ import annotations
 
