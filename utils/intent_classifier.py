@@ -1,29 +1,4 @@
-"""
-utils/intent_classifier.py
-==========================
-Production-ready hybrid intent classifier for the Myanmar Loan RAG Chatbot.
 
-Classification pipeline
------------------------
-1. Normalise & sanitise input text.
-2. Keyword / pattern fast-path  →  O(1), no model call required.
-   Returns immediately when confidence ≥ KEYWORD_CONFIDENCE_THRESHOLD.
-3. Embedding similarity fallback  →  cosine similarity against per-intent
-   prototype sentences encoded once at construction time via EmbeddingEngine
-   (BAAI/bge-m3).
-4. Return (IntentLabel, confidence: float).
-
-Supports
---------
-* English (full sentences, casual / incomplete phrases)
-* Burmese / Myanmar script (Unicode range U+1000–U+109F)
-* Mixed-script input
-
-Dependencies
-------------
-* Only the project-internal EmbeddingEngine — no new pip packages.
-* numpy  (already required by any embedding stack).
-"""
 
 from __future__ import annotations
 

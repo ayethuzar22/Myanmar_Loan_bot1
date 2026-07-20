@@ -1,15 +1,8 @@
-"""
-models/loan_document.py — LoanDocument dataclass.
 
-Immutable, hashable representation of one validated loan.json entry.
-Moved verbatim from rag1.py.
-"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-
-
 @dataclass(frozen=True)
 class LoanDocument:
     """
@@ -28,21 +21,40 @@ class LoanDocument:
     related_topics: tuple[str, ...]
     source:         str
 
+    priority: int = 0
+
+    @property
+    def search_text(self) -> str:
+        return " ".join([
+            self.category,
+            self.topic,
+            self.question,
+            " ".join(self.aliases),
+            " ".join(self.keywords),
+            self.answer
+        ]).lower()
+
     @property
     def semantic_text(self) -> str:
-        """
-        Single concatenated string for embedding.
-        Category + Topic + Question + Aliases + Keywords + Answer yields richer
-        retrieval signal than embedding the question field alone.
-        """
-        parts: list[str] = [
+
+        parts = [
             f"Category: {self.category}",
             f"Topic: {self.topic}",
             f"Question: {self.question}",
         ]
+
         if self.aliases:
-            parts.append(f"Aliases: {' | '.join(self.aliases)}")
+            parts.append(
+                f"Aliases: {' | '.join(self.aliases)}"
+            )
+
         if self.keywords:
-            parts.append(f"Keywords: {' '.join(self.keywords)}")
-        parts.append(f"Answer: {self.answer}")
+            parts.append(
+                f"Keywords: {' '.join(self.keywords)}"
+            )
+
+        parts.append(
+            f"Answer: {self.answer}"
+        )
+
         return "\n".join(parts)

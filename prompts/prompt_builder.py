@@ -46,6 +46,11 @@ class PromptBuilder:
 
         if chat_history:
             parts.append("[CONVERSATION HISTORY]")
+            parts.append(
+                "This history is for conversational flow only (resolving "
+                "what 'it'/'that' refers to). It is NOT a source of facts — "
+                "use only [RETRIEVED KNOWLEDGE BASE CONTEXT] below for facts."
+            )
             for turn in chat_history[-HISTORY_WINDOW:]:
                 prefix = "User" if turn.role == "user" else "Assistant"
                 parts.append(f"{prefix}: {turn.content}")

@@ -1,33 +1,3 @@
-"""
-llm/qwen_client.py — Local Ollama-backed Qwen client.
-
-Matches the GeminiClient interface exactly (is_available / generate /
-generate_raw) so RAGPipeline and AutonomousLearningFilter work with either
-backend interchangeably.
-
-CHANGE FROM PREVIOUS VERSION
------------------------------
-No more `transformers` / `torch` / model downloads / GPU VRAM detection.
-This now sends HTTP requests to a locally-running Ollama server
-(http://localhost:11434 by default), which is already serving the
-`qwen2.5:1.5b` model you pulled with `ollama pull qwen2.5:1.5b`.
-
-Requirements:
-    - Ollama must be running locally (`ollama serve`, or it's already
-      running as a background service after install).
-    - The model must be pulled once: `ollama pull qwen2.5:1.5b`
-    - `pip install requests` (only new dependency — no torch/transformers)
-
-REQUIRED CONFIG (add to config.py)
--------------------------------------
-    OLLAMA_BASE_URL — defaults to "http://localhost:11434" if not set
-    OLLAMA_MODEL     — defaults to "qwen2.5:1.5b" if not set
-    QWEN_MAX_NEW_TOKENS — reused from before (maps to Ollama's num_predict)
-    QWEN_TEMPERATURE    — reused from before
-    OLLAMA_TIMEOUT       — optional, defaults to 120s (CPU generation on a
-                            1.5B model is slower than a cloud API, so this
-                            is more generous than a typical HTTP timeout)
-"""
 
 from __future__ import annotations
 
@@ -42,24 +12,10 @@ from prompts.system_prompt import SYSTEM_INSTRUCTION
 # to config.py yet, so this module never hard-fails on a missing constant.
 OLLAMA_BASE_URL = getattr(_config, "OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL    = getattr(_config, "OLLAMA_MODEL", "qwen2.5:1.5b")
-OLLAMA_TIMEOUT  = getattr(_config, "OLLAMA_TIMEOUT", 120)
+OLLAMA_TIMEOUT  = getattr(_config, "OLLAMA_TIMEOUT", 300)
 
 
 class QwenClient:
-    """
-    Thread-safe wrapper around a local Ollama server. Mirrors GeminiClient's
-    public surface:
-        is_available() -> bool
-        generate(prompt) -> Optional[str]
-        generate_raw(prompt, temperature=None) -> Optional[str]
-
-    The `requests.Session` is built lazily on first use and connectivity is
-    verified with a cheap GET before any generation call, so importing or
-    constructing QwenClient never fails just because Ollama isn't running
-    yet — that failure is deferred to first real use and reported the same
-    way a Gemini/cloud outage would be (caller falls back to local KB /
-    no-info path).
-    """
 
     def __init__(
         self,
@@ -93,28 +49,69 @@ class QwenClient:
 
     # ── Internal ──────────────────────────────────────────────────────────
 
-    def _run_generation(self, prompt: str, temperature: float) -> Optional[str]:
+    # def _run_generation(self, prompt: str, temperature: float) -> Optional[str]:
+    #     if not self._ensure_session():
+    #         return None
+    #     try:
+    #         full_prompt = f"<|im_start|>system\n{SYSTEM_INSTRUCTION}<|im_end|>\n<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n"
+    #         resp = self._session.post(
+    #             f"{self._base_url}/api/generate",
+    #             json={
+    #                 "model": self._model_name,
+    #                 "prompt": prompt,
+    #                 "system": SYSTEM_INSTRUCTION,
+    #                 "stream": False,
+    #                 "options": {
+    #                     "temperature": temperature,
+    #                     "num_predict": self.max_new_tokens,
+    #                 },
+    #             },
+    #             timeout=self.timeout,
+    #         )
+    #         resp.raise_for_status()
+    #         data = resp.json()
+    #         text = (data.get("response") or "").strip()
+    #         return text or None
+    #
+    #     except Exception as exc:
+    #         log.error("QwenClient: Ollama generation failed — %s", exc)
+    #         return None
+
+    def _run_generation(self, prompt: str, temperature: float = 0.1) -> Optional[str]:
         if not self._ensure_session():
             return None
         try:
+            # Qwen အတွက် Format ကို သေချာသတ်မှတ်ပေးပါ
+            formatted_prompt = (
+                f"<|im_start|>system\n"
+                f"You are a helpful customer service assistant for Wonderami Smart Loan. "
+                f"Answer the user's question clearly, politely, and accurately using ONLY the provided context.\n"
+                f"<|im_end|>\n"
+                f"<|im_start|>user\n{prompt}<|im_end|>\n"
+                f"<|im_start|>assistant\n"
+            )
+
             resp = self._session.post(
                 f"{self._base_url}/api/generate",
                 json={
                     "model": self._model_name,
-                    "prompt": prompt,
-                    "system": SYSTEM_INSTRUCTION,
+                    "prompt": formatted_prompt,
+                    "raw": True,
                     "stream": False,
                     "options": {
-                        "temperature": temperature,
-                        "num_predict": self.max_new_tokens,
+                        "temperature": 0.1,  # Hallucination နည်းအောင် 0.1 ထားပါ
+                        "top_p": 0.8,
+                        "stop": ["<|im_start|>", "<|im_end|>"], # Prompt ပြန်မထွက်အောင် ပိတ်ပါ
                     },
                 },
                 timeout=self.timeout,
             )
             resp.raise_for_status()
             data = resp.json()
-            text = (data.get("response") or "").strip()
-            return text or None
+            return (data.get("response") or "").strip()
+        except Exception as exc:
+            log.error("QwenClient failed: %s", exc)
+            return None
 
         except Exception as exc:
             log.error("QwenClient: Ollama generation failed — %s", exc)
@@ -135,10 +132,7 @@ class QwenClient:
                 return True
             except Exception as exc:
                 log.error(
-                    "QwenClient: Ollama connection failed — %s. Is `ollama "
-                    "serve` running, and did you `ollama pull %s`? Falling "
-                    "back as unavailable; caller should treat this like "
-                    "Gemini being down (local KB fallback / no-info path).",
+
                     exc, self._model_name,
                 )
                 self._init_failed = True

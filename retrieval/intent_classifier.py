@@ -1,37 +1,4 @@
-"""
-retrieval/intent_classifier.py — lightweight keyword-based intent
-classification, run BEFORE reranking (after FAISS retrieval).
 
-Why this exists
-----------------
-Some Myanmar loan queries are short and nearly identical in wording to
-*several* different KB topics at once. For example:
-
-    MAX: "အများဆုံး ဘယ်လောက်ချေးပေးလဲ"
-    MIN: "အနည်းဆုံး ဘယ်လောက်ကနေ ချေးယူလို့ရပါသလဲ"
-
-These two share almost every token except the min/max signal word. A
-bi-encoder (FAISS/bge-m3) and even a cross-encoder reranker can still
-let both documents through as close-scoring neighbors, because the
-semantic similarity really is high — the sentences ARE about the same
-subject (loan amount), just opposite ends of it. Once both documents
-land in the LLM's context, a 1.5B local model on Ollama is not reliable
-at selectively ignoring the wrong one; it tends to blend both facts
-into the final answer.
-
-This module does not replace FAISS or the reranker. It runs first, as a
-cheap keyword classifier, and its only job is to narrow which KB
-*topics* are eligible candidates for a query where an intent is
-confidently detected via explicit signal words. Queries where no
-keyword matches fall through with NO filtering applied — existing
-behavior for the rest of the knowledge base is completely untouched.
-
-Safety: if the detected intent's allow-list matches zero of the
-FAISS-returned candidates (e.g. a topic name was renamed in loan.json
-and this file wasn't updated to match), the caller should fall back to
-the original unfiltered results rather than return nothing — see the
-usage in rag_pipeline.py's run().
-"""
 
 from __future__ import annotations
 

@@ -1,10 +1,4 @@
-"""
-embeddings/embedding_engine.py — EmbeddingEngine class.
 
-Thread-safe SentenceTransformer (BGE-M3) wrapper. Moved verbatim from
-rag1.py, including the retry-on-transient-network-failure logic added
-around the first-time Hugging Face Hub download.
-"""
 
 from __future__ import annotations
 

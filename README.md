@@ -444,7 +444,7 @@
 
 ### How to train
 ```bash
-python train_intent.py --data intent_training_data.json --folds 5
+#python train_intent.py --data intent_training_data.json --folds 5
 # Outputs: artifacts/bert_intent_model.pkl + artifacts/label_encoder.pkl
 ```
 

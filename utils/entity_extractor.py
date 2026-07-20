@@ -1,35 +1,3 @@
-"""
-utils/entity_extractor.py
-=========================
-Rule-based entity extractor for the Myanmar Microfinance Loan AI Chatbot.
-
-Extraction is intentionally LLM-free: regex + keyword lookup + Myanmar-digit
-conversion covers all known entity patterns reliably and at zero inference cost.
-
-Extracted entities
-------------------
-  amount          – loan amount in raw kyat (int)
-  loan_category   – "agriculture" | "msme" | "consumer"  (str)
-  term_months     – loan duration in months (int)
-  income          – monthly income in raw kyat (int)
-  documents       – list of canonical document tags (list[str])
-  guarantor_count – number of guarantors (int)
-
-Integration path
-----------------
-  1. Intent classifier (utils/intent_classifier.py)
-       → tells us what the user wants
-  2. THIS FILE: Entity extractor
-       → tells us what data the user provided
-  3. models/application_state.py  (future Step 4)
-       → ApplicationState.merge(ExtractedEntities) stores fields,
-         derives missing_fields, advances current_stage
-  4. rag/pipeline.py  (future Step 5)
-       → calls classifier + extractor every turn, passes state to prompt builder
-
-No new pip packages required.  Uses only Python stdlib (re, dataclasses,
-unicodedata, logging) and a small amount of numpy (already project-present).
-"""
 
 from __future__ import annotations
 

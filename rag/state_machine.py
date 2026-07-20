@@ -34,7 +34,8 @@ class LoanStateMachine:
                 return LoanStage.TERM
 
         if current_stage == LoanStage.TERM:
-
+            if "term_months" not in entities:
+                return LoanStage.TERM
             return LoanStage.DOCUMENT
 
         if current_stage == LoanStage.DOCUMENT:

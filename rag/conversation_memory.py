@@ -1,14 +1,5 @@
-"""
-Conversation memory for loan chatbot.
-
-Stores:
-- chat history
-- extracted entities
-- current conversation context
-"""
-
 from dataclasses import dataclass, field
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from datetime import datetime
 from rag.state_machine import LoanStage
 
@@ -31,6 +22,16 @@ class ConversationMemory:
 
         self.entities: Dict[str, Any] = {}
         self.stage: "LoanStage" = LoanStage.START
+
+        # ── Added for rag/dialogue_manager.py ──────────────────────────
+        # Optional, additive-only fields. Any existing code that never
+        # references these two attributes behaves exactly as before.
+        # They track a clarifying question the dialogue manager itself
+        # asked, so the NEXT short reply ("Yes"/"Farmer"/etc.) can be
+        # resolved against it instead of being treated as a fresh,
+        # under-specified query.
+        self.pending_clarify_query: Optional[str] = None
+        self.pending_clarify_type: Optional[str] = None
 
     def add_user_message(self, text:str):
 
@@ -73,6 +74,7 @@ class ConversationMemory:
         )
 
     def clear(self):
-
         self.messages.clear()
         self.entities.clear()
+        self.pending_clarify_query = None
+        self.pending_clarify_type = None

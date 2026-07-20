@@ -169,10 +169,9 @@ class KnowledgeStore:
                     aliases=tuple(str(a) for a in item.get("aliases", [])),
                     keywords=tuple(str(k) for k in item.get("keywords", [])),
                     answer=str(item["answer"]).strip(),
-                    related_topics=tuple(
-                        str(r) for r in item.get("related_topics", [])
-                    ),
+                    related_topics=tuple(str(r) for r in item.get("related_topics", [])),
                     source=str(item.get("source", "loan.json")),
+                    priority=int(item.get("priority", 0)),  # <-- ဒီလိုထည့်ပါ
                 )
             except (TypeError, ValueError) as exc:
                 log.warning(

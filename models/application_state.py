@@ -1,28 +1,10 @@
-"""
-models/application_state.py — Conversation stage + collected loan facts.
-
-This is the shared "memory" object that the state machine (rag/state_machine.py)
-and entity extractor (utils/entity_extractor.py) both operate on. It replaces
-the ad-hoc single-slot tracking (_is_awaiting_loan_mode / _find_pending_loan_amount)
-that previously lived directly inside RAGPipeline.
-
-Nothing in the existing pipeline is modified by adding this file — it is
-pure addition until step 6 wires it in.
-"""
 
 from __future__ import annotations
-
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
-
-
 class ConversationStage(str, Enum):
-    """
-    Where the conversation currently stands, from the loan officer's
-    point of view. A real officer doesn't jump straight to numbers —
-    they establish purpose, gather details, check eligibility, then quote.
-    """
+
     GREETING            = "greeting"
     DISCOVER_NEED       = "discover_need"        # what do you want the loan for?
     COLLECT_LOAN_TYPE    = "collect_loan_type"     # agriculture / MSME / consumption
@@ -34,7 +16,6 @@ class ConversationStage(str, Enum):
     DOCUMENT_GUIDANCE    = "document_guidance"
     GENERAL_QA          = "general_qa"            # free-form KB questions, any stage
     HANDOFF             = "handoff"               # escalate to human officer
-
 
 @dataclass
 class ApplicationState:

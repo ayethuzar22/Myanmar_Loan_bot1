@@ -140,12 +140,21 @@
             "paddy",
             "cultivation",
             "tawng thu",
-            "lal thar mar"
+            "lal thar mar",
+            "Farmer တွေ လျှောက်လို့ရလား",
+            "တောင်သူလယ်သမားတွေ လျှောက်လို့ရလား",
+            "စိုက်ပျိုးရေးလုပ်တဲ့သူ လျှောက်လို့ရလား",
+            "Livestock farmer ရလား",
+            "Rubber farmer ရလား",
+            "Paddy farmer ရလား",
+            "Orchard owner ရလား",
+            "Plantation owner ရလား"
         ],
         "related_topics": [
             "Agriculture Loan Details",
             "Required Documents",
-            "Loan Eligibility Age"
+            "Loan Eligibility Age",
+            "farmer loan\n\nagriculture customer\n\nတောင်သူ\n\nစိုက်ပျိုးရေး\n\nလယ်သမား\n\nrubber farmer\n\ncrop farmer\n\nlivestock owne"
         ]
     },
     {
@@ -5128,5 +5137,114 @@
             "Basic Document Requirements",
             "No Income Applicant"
         ]
+    },
+    {
+    "id": 139,
+    "category": "Eligibility",
+    "topic": "Farmer Eligibility",
+    "question": "လယ်သမားတွေ ချေးငွေလျှောက်လို့ရပါသလား",
+    "answer": "ဟုတ်ကဲ့ခင်ဗျာ။ လယ်သမားများသည် Agriculture Loan (စိုက်ပျိုးရေးချေးငွေ) အတွက် လျှောက်ထားနိုင်ပါတယ်။ လယ်ယာလုပ်ငန်း၊ စိုက်ပျိုးရေးလုပ်ငန်း သို့မဟုတ် မွေးမြူရေးလုပ်ငန်းမှ ပုံမှန်ဝင်ငွေရရှိသူဖြစ်ရပါမည်။ ချေးငွေအတည်ပြုမှုသည် လုပ်ငန်းအခြေအနေ၊ ဝင်ငွေနှင့် လိုအပ်သောစာရွက်စာတမ်းများကို စစ်ဆေးပြီး ဆုံးဖြတ်ပါသည်။",
+    "aliases": [
+        "farmer can apply loan",
+        "can farmer get loan",
+        "agriculture loan eligibility",
+        "လယ်သမား ချေးလို့ရလား",
+        "တောင်သူ ချေးလို့ရလား",
+        "စိုက်ပျိုးရေးသမား ချေးလို့ရလား",
+        "လယ်သမားတွေအတွက် loan ရှိလား"
+    ],
+    "keywords": [
+        "farmer",
+        "agriculture",
+        "လယ်သမား",
+        "တောင်သူ",
+        "စိုက်ပျိုးရေး",
+        "farm"
+    ],
+    "language": "my",
+    "related_topics": [
+        "Agriculture Loan Details",
+        "Required Documents",
+        "Income Requirement"
+    ]
+    },
+    {
+    "id":140,
+    "category":"Required Documents",
+    "topic":"Guarantor Requirement",
+    "question":"အာမခံသူလိုအပ်ပါသလား",
+    "answer":"ဟုတ်ကဲ့ခင်ဗျာ။ ချေးငွေအမျိုးအစားနှင့် လျှောက်ထားသူ၏အခြေအနေပေါ်မူတည်ပြီး အာမခံသူ (Guarantor) လိုအပ်နိုင်ပါသည်။ အာမခံသူသည် သတ်မှတ်ထားသော အရည်အချင်းများနှင့် ကိုက်ညီရပါမည်။",
+    "aliases":[
+    "do I need guarantor",
+    "guarantor required",
+    "အာမခံသူလိုလား",
+    "အာမခံလိုအပ်လား"
+    ],
+    "keywords":[
+    "guarantor",
+    "အာမခံ",
+    "အာမခံသူ"
+    ],
+    "language":"my",
+    "related_topics":[
+    "Required Documents",
+    "Eligibility"
+    ]
+    },
+
+    {
+    "id":141,
+    "category":"Passport Not Accepted",
+    "topic":"Identity Document Requirement",
+    "question":"Passport နဲ့ လျှောက်လို့ရလား",
+    "answer":"အားနာပါတယ်ခင်ဗျာ။ Passport ဖြင့် ချေးငွေလျှောက်ထား၍ မရပါ။ Wondarmi Microfinance တွင် မြန်မာနိုင်ငံသားစိစစ်ရေးကတ် (NRC) ဖြင့်သာ ချေးငွေလျှောက်ထားနိုင်ပါသည်။ Passport ကို လျှောက်ထားရန် အဓိကအထောက်အထားအဖြစ် လက်မခံပါခင်ဗျာ။",
+    "aliases":[
+        "passport နဲ့ရလား",
+        "passport ဖြင့်လျှောက်လို့ရလား",
+        "passport နဲ့ချေးငွေရလား",
+        "passport only",
+        "passport accept",
+        "နိုင်ငံကူးလက်မှတ်နဲ့ရလား"
+    ],
+    "keywords":[
+        "passport",
+        "နိုင်ငံကူးလက်မှတ်",
+        "NRC",
+        "မှတ်ပုံတင်"
+    ],
+    "language":"my",
+    "related_topics":[
+        "Basic Document Requirements"
+    ]
+    },
+    {
+    "id":142,
+    "category":"Individual Loan",
+    "topic":"Individual Loan Application Requirements",
+
+    "question":
+    "တစ်ဦးချင်းချေးငွေ လျှောက်ဖို့ ဘာတွေလိုအပ်ပါသလဲ",
+
+    "answer":
+    "တစ်ဦးချင်းချေးငွေလျှောက်ထားရာတွင် လျှောက်ထားသူ၏ မှတ်ပုံတင် (NRC)၊ အိမ်ထောင်စုစာရင်း၊ နေထိုင်မှုအထောက်အထား၊ ဝင်ငွေအထောက်အထားနှင့် လိုအပ်သော စာရွက်စာတမ်းများ လိုအပ်ပါသည်။ ချေးငွေပမာဏနှင့် လုပ်ငန်းအမျိုးအစားပေါ်မူတည်၍ ထပ်မံစစ်ဆေးနိုင်ပါသည်။",
+
+    "aliases":[
+    "တစ်ဦးတည်းချေးချင်တယ်",
+    "individual loan လိုချင်တယ်",
+    "၅၀ သိန်းချေးချင်တယ်",
+    "5000000 ချေးချင်တယ်",
+    "တစ်ယောက်တည်းချေးငွေ"
+    ],
+
+    "keywords":[
+    "individual",
+    "တစ်ဦးချင်း",
+    "၅၀သိန်း",
+    "5000000",
+    "loan requirement",
+    "လိုအပ်ချက်"
+    ],
+
+    "language":"my"
     }
 ]
